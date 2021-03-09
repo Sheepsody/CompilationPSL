@@ -1,0 +1,20 @@
+// Implicit whitespace & comment
+WHITESPACE = _{ " " | "\t" | "\n" }
+COMMENT = _{ "/*" ~ (!"*/" ~ ANY)* ~ "*/" }
+
+uint = { ASCII_DIGIT+ }
+int = { ("-" | "+")? ~ uint }
+
+num = @{ int ~ ("." ~ uint)? ~ ("e" ~ int)? }
+
+operation = _{ add | subtract | multiply | divide | power }
+    add      = { "+" }
+    subtract = { "-" }
+    multiply = { "*" }
+    divide   = { "/" }
+    power    = { "^" }
+
+expr = { term ~ (operation ~ term)* }
+term = _{ num | "(" ~ expr ~ ")" }
+
+program = _{ SOI ~ expr ~ EOI }
