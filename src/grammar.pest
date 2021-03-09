@@ -1,9 +1,8 @@
 // Lexing
 
 cons = { pi }
-     pi = { "PI" }
+     pi = @{ "PI" }
 
-name = { ASCII_ALPHA+ }
 uint = { ASCII_DIGIT+ }
 int = { ("-" | "+")? ~ uint }
 
@@ -17,18 +16,21 @@ operator = _{ add | subtract | multiply | divide | power }
     power    = { "^" }
 
 function = _{ cos }
-    cos      = { "cos" }
+    cos      = @{ "cos" }
+
+// FIXME: Problème avec les constantes définies telles quelles....
+variable = @{ &( ASCII_ALPHA+ ) ~ !( cons | function ) }
 
 // Parsing
 
-binary = { term ~ (operator ~ term)* }
+binary = { term ~ (operator ~ term)*}
 unary = { operator ~ term }
 call = { function ~ "(" ~ expr ~ ")" }
 
-term = _{ num | cons | "(" ~ expr ~ ")" | call }
+term = _{ num | cons | variable | "(" ~ expr ~ ")" | call }
 expr = _{ binary | unary | call }
 
-init = { "let" ~ name ~ "=" ~ term }
+init = { "let" ~ variable ~ "=" ~ term }
 
 exprast = { expr }
 item = _{ exprast | init }
