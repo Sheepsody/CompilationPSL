@@ -1,5 +1,8 @@
 // Lexing
 
+cons = { pi }
+     pi = { "PI" }
+
 uint = { ASCII_DIGIT+ }
 int = { ("-" | "+")? ~ uint }
 
@@ -21,8 +24,8 @@ binary = { term ~ (operator ~ term)* }
 unary = { operator ~ term }
 call = { function ~ "(" ~ expr ~ ")" }
 
-term = _{ num | "(" ~ expr ~ ")" | call }
-expr = _{ binary | unary}
+term = _{ num | cons | "(" ~ expr ~ ")" | call }
+expr = _{ binary | unary }
 
 program = _{ SOI ~ expr ~ EOI }
 

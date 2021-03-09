@@ -7,6 +7,7 @@ extern crate lazy_static;
 use pest::iterators::*;
 use pest::prec_climber::*;
 use pest::Parser;
+use std::f64::consts;
 use std::fs;
 
 #[derive(Parser)]
@@ -32,11 +33,18 @@ fn eval(expression: Pairs<Rule>) -> f64 {
         |pair: Pair<Rule>| -> f64 {
             match pair.as_rule() {
                 Rule::num => pair.as_str().parse::<f64>().unwrap(),
+                Rule::cons => {
+                    let mut pair = pair.into_inner();
+                    match pair.next().unwrap().as_rule() {
+                        Rule::pi => consts::PI,
+                        _ => unreachable!(),
+                    }
+                }
                 Rule::binary => eval(pair.into_inner()),
                 Rule::unary => {
                     let mut pair = pair.into_inner();
                     let op = pair.next().unwrap().as_rule();
-                    let term = eval(pair.next().unwrap().into_inner());
+                    let term = eval(pair);
                     match op {
                         Rule::add => term,
                         Rule::subtract => -term,
@@ -46,7 +54,7 @@ fn eval(expression: Pairs<Rule>) -> f64 {
                 Rule::call => {
                     let mut pair = pair.into_inner();
                     let func = pair.next().unwrap().as_rule();
-                    let term = eval(pair.next().unwrap().into_inner());
+                    let term = eval(pair);
                     match func {
                         Rule::cos => term.cos(),
                         _ => unreachable!(),
