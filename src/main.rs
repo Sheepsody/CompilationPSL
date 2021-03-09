@@ -29,10 +29,31 @@ lazy_static! {
 fn eval(expression: Pairs<Rule>) -> f64 {
     PREC_CLIMBER.climb(
         expression,
-        |pair: Pair<Rule>| match pair.as_rule() {
-            Rule::num => pair.as_str().parse::<f64>().unwrap(),
-            Rule::expr => eval(pair.into_inner()),
-            _ => unreachable!(),
+        |pair: Pair<Rule>| -> f64 {
+            match pair.as_rule() {
+                Rule::num => pair.as_str().parse::<f64>().unwrap(),
+                Rule::binary => eval(pair.into_inner()),
+                Rule::unary => {
+                    let mut pair = pair.into_inner();
+                    let op = pair.next().unwrap().as_rule();
+                    let term = eval(pair.next().unwrap().into_inner());
+                    match op {
+                        Rule::add => term,
+                        Rule::subtract => -term,
+                        _ => unreachable!(),
+                    }
+                }
+                Rule::call => {
+                    let mut pair = pair.into_inner();
+                    let func = pair.next().unwrap().as_rule();
+                    let term = eval(pair.next().unwrap().into_inner());
+                    match func {
+                        Rule::cos => term.cos(),
+                        _ => unreachable!(),
+                    }
+                }
+                _ => unreachable!(),
+            }
         },
         |lhs: f64, op: Pair<Rule>, rhs: f64| match op.as_rule() {
             Rule::add => lhs + rhs,

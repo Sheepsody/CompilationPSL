@@ -1,20 +1,32 @@
-// Implicit whitespace & comment
-WHITESPACE = _{ " " | "\t" | "\n" }
-COMMENT = _{ "/*" ~ (!"*/" ~ ANY)* ~ "*/" }
+// Lexing
 
 uint = { ASCII_DIGIT+ }
 int = { ("-" | "+")? ~ uint }
 
 num = @{ int ~ ("." ~ uint)? ~ ("e" ~ int)? }
 
-operation = _{ add | subtract | multiply | divide | power }
+operator = _{ add | subtract | multiply | divide | power }
     add      = { "+" }
     subtract = { "-" }
     multiply = { "*" }
     divide   = { "/" }
     power    = { "^" }
 
-expr = { term ~ (operation ~ term)* }
-term = _{ num | "(" ~ expr ~ ")" }
+function = _{ cos }
+    cos      = { "cos" }
+
+// Parsing
+
+binary = { term ~ (operator ~ term)* }
+unary = { operator ~ term }
+call = { function ~ "(" ~ expr ~ ")" }
+
+term = _{ num | "(" ~ expr ~ ")" | call }
+expr = _{ binary | unary}
 
 program = _{ SOI ~ expr ~ EOI }
+
+// Implicit whitespace & comment
+
+WHITESPACE = _{ " " | "\t" | "\n" }
+COMMENT = _{ "/*" ~ (!"*/" ~ ANY)* ~ "*/" }
