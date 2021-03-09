@@ -1,3 +1,5 @@
+// TODO : Add clean tests (pour les fonctionnalités jusque là)
+
 extern crate pest;
 #[macro_use]
 extern crate pest_derive;
@@ -11,13 +13,14 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::f64::consts;
 use std::fs;
+use std::option::Option;
 use std::rc::Rc;
 use std::string::String;
 
 type VarDict = HashMap<String, f64>;
 
 #[derive(Parser)]
-#[grammar = "grammar.pest"] // relative to project `src`
+#[grammar = "genko.grammar"] // relative to project `src`
 struct MyParser;
 
 lazy_static! {
@@ -26,9 +29,16 @@ lazy_static! {
         use Rule::*;
 
         PrecClimber::new(vec![
-            Operator::new(add, Left) | Operator::new(subtract, Left),
-            Operator::new(multiply, Left) | Operator::new(divide, Left),
-            Operator::new(power, Right),
+            Operator::new(add, Left) | Operator::new(sub, Left),
+            Operator::new(mul, Left) | Operator::new(div, Left),
+            Operator::new(pow, Right),
+            Operator::new(eq, Left)
+                | Operator::new(lt, Left)
+                | Operator::new(le, Left)
+                | Operator::new(gt, Left)
+                | Operator::new(ge, Left)
+                | Operator::new(and, Left)
+                | Operator::new(or, Left),
         ])
     };
 }
@@ -54,7 +64,7 @@ fn eval(expression: Pairs<Rule>, dict: Rc<RefCell<Box<VarDict>>>) -> f64 {
                     let term = eval(pair, dict.clone());
                     match op {
                         Rule::add => term,
-                        Rule::subtract => -term,
+                        Rule::sub => -term,
                         _ => unreachable!(),
                     }
                 }
@@ -77,19 +87,31 @@ fn eval(expression: Pairs<Rule>, dict: Rc<RefCell<Box<VarDict>>>) -> f64 {
         },
         |lhs: f64, op: Pair<Rule>, rhs: f64| match op.as_rule() {
             Rule::add => lhs + rhs,
-            Rule::subtract => lhs - rhs,
-            Rule::multiply => lhs * rhs,
-            Rule::divide => lhs / rhs,
-            Rule::power => lhs.powf(rhs),
+            Rule::sub => lhs - rhs,
+            Rule::mul => lhs * rhs,
+            Rule::div => lhs / rhs,
+            Rule::pow => lhs.powf(rhs),
+            Rule::eq => return if lhs == rhs { 1.0 } else { 0.0 },
+            Rule::lt => return if lhs < rhs { 1.0 } else { 0.0 },
+            Rule::gt => return if lhs > rhs { 1.0 } else { 0.0 },
+            Rule::le => return if lhs <= rhs { 1.0 } else { 0.0 },
+            Rule::ge => return if lhs >= rhs { 1.0 } else { 0.0 },
+            Rule::and => return if lhs > 0.0 && rhs > 0.0 { 1.0 } else { 0.0 },
+            Rule::or => return if lhs > 0.0 || rhs > 0.0 { 1.0 } else { 0.0 },
             _ => unreachable!(),
         },
     )
 }
 
-fn main() {
-    let file = fs::read_to_string("cal.test").expect("Cannot read");
-    let pairs = MyParser::parse(Rule::program, &file).unwrap_or_else(|e| panic!("{}", e));
-    let dict = Rc::new(RefCell::new(Box::new(VarDict::new())));
+fn print_variables_dict(dict: Rc<RefCell<Box<VarDict>>>) {
+    for (key, value) in dict.borrow().as_ref().into_iter() {
+        println!("{} : {}", key, value);
+    }
+}
+
+fn execute(string: &str, dict: Rc<RefCell<Box<VarDict>>>) -> Option<f64> {
+    let mut output: Option<f64> = Option::None;
+    let pairs = MyParser::parse(Rule::program, string).unwrap_or_else(|e| panic!("{}", e));
     for pair in pairs {
         if !pair.as_str().is_empty() {
             match pair.as_rule() {
@@ -101,7 +123,7 @@ fn main() {
                 }
                 // FIXME: Should we remove this kind of node and match it implicitely with _ ?
                 Rule::exprast => {
-                    println!("{}", eval(pair.into_inner(), dict.clone()));
+                    output = Option::Some(eval(pair.into_inner(), dict.clone()));
                 }
                 _ => {
                     unreachable!()
@@ -109,4 +131,14 @@ fn main() {
             }
         }
     }
+    output
+}
+
+fn main() {
+    let file = fs::read_to_string("cal.test").expect("Cannot read");
+    let dict = Rc::new(RefCell::new(Box::new(VarDict::new())));
+    if let Some(result) = execute(&file, dict.clone()) {
+        println!("Result : {}", result);
+    }
+    print_variables_dict(dict.clone());
 }

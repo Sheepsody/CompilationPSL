@@ -5,39 +5,46 @@ cons = { pi }
 
 uint = { ASCII_DIGIT+ }
 int = { ("-" | "+")? ~ uint }
-
 num = @{ int ~ ("." ~ uint)? ~ ("e" ~ int)? }
 
 bool = @{ "true" | "false" }
 
-operator = _{ add | subtract | multiply | divide | power }
-    add      = { "+" }
-    subtract = { "-" }
-    multiply = { "*" }
-    divide   = { "/" }
-    power    = { "^" }
+operator = _{ add | sub | mul | div | pow | eq | le | ge | lt | gt | and | or}
+    add      = @{ "+" }
+    sub = @{ "-" }
+    mul = @{ "*" }
+    div   = @{ "/" }
+    pow    = @{ "^" }
+    eq     = @{ "==" }
+    le     = @{ "<=" }
+    ge     = @{ ">=" }
+    lt     = @{ "<" }
+    gt     = @{ ">" }
+    and     = @{ "&&" }
+    or     = @{ "||" }
 
 function = _{ cos }
     cos      = @{ "cos" }
 
 // FIXME: Problème avec les constantes définies telles quelles....
-ident = @{ &( !( cons | function | "let" | "true" | "false" ) ~ ANY)  ~ ASCII_ALPHA+ }
+ident = @{ ASCII_ALPHA+ }
 
 // Parsing
+
+init = { ident ~ ":=" ~ term }
 
 binary = { term ~ (operator ~ term)*}
 unary = { operator ~ term }
 call = { function ~ "(" ~ expr ~ ")" }
 
-term = _{ num | bool | cons | ident | "(" ~ expr ~ ")" | call }
+term = _{ num | bool | cons | "(" ~ expr ~ ")" | call | ident } // Warning! ident at the end
 expr = _{ binary | unary | call }
 
-init = { "let" ~ ident ~ "=" ~ term }
 
 exprast = { expr }
-item = _{ exprast | init }
+item = _{ init | exprast }
 
-program = _{ SOI ~ (item ~ ";")* ~ EOI }
+program = _{ SOI ~ item ~ (";" ~ item)* ~ ";" ~ EOI }
 
 // Implicit whitespace & comment
 
