@@ -7,8 +7,14 @@ extern crate lazy_static;
 use pest::iterators::*;
 use pest::prec_climber::*;
 use pest::Parser;
+use std::cell::RefCell;
+use std::collections::HashMap;
 use std::f64::consts;
 use std::fs;
+use std::rc::Rc;
+use std::string::String;
+
+type VarDict = HashMap<String, f64>;
 
 #[derive(Parser)]
 #[grammar = "grammar.pest"] // relative to project `src`
@@ -27,12 +33,13 @@ lazy_static! {
     };
 }
 
-fn eval(expression: Pairs<Rule>) -> f64 {
+fn eval(expression: Pairs<Rule>, dict: Rc<RefCell<Box<VarDict>>>) -> f64 {
     PREC_CLIMBER.climb(
         expression,
         |pair: Pair<Rule>| -> f64 {
             match pair.as_rule() {
                 Rule::num => pair.as_str().parse::<f64>().unwrap(),
+                Rule::ident => *dict.borrow().get(pair.as_str()).unwrap(),
                 Rule::cons => {
                     let mut pair = pair.into_inner();
                     match pair.next().unwrap().as_rule() {
@@ -40,11 +47,11 @@ fn eval(expression: Pairs<Rule>) -> f64 {
                         _ => unreachable!(),
                     }
                 }
-                Rule::binary => eval(pair.into_inner()),
+                Rule::binary => eval(pair.into_inner(), dict.clone()),
                 Rule::unary => {
                     let mut pair = pair.into_inner();
                     let op = pair.next().unwrap().as_rule();
-                    let term = eval(pair);
+                    let term = eval(pair, dict.clone());
                     match op {
                         Rule::add => term,
                         Rule::subtract => -term,
@@ -54,7 +61,7 @@ fn eval(expression: Pairs<Rule>) -> f64 {
                 Rule::call => {
                     let mut pair = pair.into_inner();
                     let func = pair.next().unwrap().as_rule();
-                    let term = eval(pair);
+                    let term = eval(pair, dict.clone());
                     match func {
                         Rule::cos => term.cos(),
                         _ => unreachable!(),
@@ -81,15 +88,19 @@ fn eval(expression: Pairs<Rule>) -> f64 {
 fn main() {
     let file = fs::read_to_string("cal.test").expect("Cannot read");
     let pairs = MyParser::parse(Rule::program, &file).unwrap_or_else(|e| panic!("{}", e));
+    let dict = Rc::new(RefCell::new(Box::new(VarDict::new())));
     for pair in pairs {
         if !pair.as_str().is_empty() {
             match pair.as_rule() {
                 Rule::init => {
-                    println!("Got init")
+                    let mut pair = pair.into_inner();
+                    let ident = pair.next().unwrap().as_str();
+                    dict.borrow_mut()
+                        .insert(String::from(ident), eval(pair, dict.clone()));
                 }
                 // FIXME: Should we remove this kind of node and match it implicitely with _ ?
                 Rule::exprast => {
-                    println!("{}", eval(pair.into_inner()));
+                    println!("{}", eval(pair.into_inner(), dict.clone()));
                 }
                 _ => {
                     unreachable!()

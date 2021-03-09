@@ -19,7 +19,7 @@ function = _{ cos }
     cos      = @{ "cos" }
 
 // FIXME: Problème avec les constantes définies telles quelles....
-variable = @{ &( ASCII_ALPHA+ ) ~ !( cons | function ) }
+ident = @{ &( !( cons | function | "let" ) ~ ANY)  ~ ASCII_ALPHA+ }
 
 // Parsing
 
@@ -27,10 +27,10 @@ binary = { term ~ (operator ~ term)*}
 unary = { operator ~ term }
 call = { function ~ "(" ~ expr ~ ")" }
 
-term = _{ num | cons | variable | "(" ~ expr ~ ")" | call }
+term = _{ num | cons | ident | "(" ~ expr ~ ")" | call }
 expr = _{ binary | unary | call }
 
-init = { "let" ~ variable ~ "=" ~ term }
+init = { "let" ~ ident ~ "=" ~ term }
 
 exprast = { expr }
 item = _{ exprast | init }
