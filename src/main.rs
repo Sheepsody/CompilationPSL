@@ -11,6 +11,7 @@ use pest::prec_climber::*;
 use pest::Parser;
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::env;
 use std::f64::consts;
 use std::fs;
 use std::option::Option;
@@ -135,7 +136,9 @@ fn execute(string: &str, dict: Rc<RefCell<Box<VarDict>>>) -> Option<f64> {
 }
 
 fn main() {
-    let file = fs::read_to_string("cal.test").expect("Cannot read");
+    let args: Vec<String> = env::args().collect();
+    let filename = args.get(1).expect("Please specify a file");
+    let file = fs::read_to_string(&filename).expect("Cannot read");
     let dict = Rc::new(RefCell::new(Box::new(VarDict::new())));
     if let Some(result) = execute(&file, dict.clone()) {
         println!("Result : {}", result);
