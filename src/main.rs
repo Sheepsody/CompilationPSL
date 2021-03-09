@@ -60,6 +60,10 @@ fn eval(expression: Pairs<Rule>) -> f64 {
                         _ => unreachable!(),
                     }
                 }
+                Rule::expr => {
+                    println!("Fuck");
+                    unreachable!()
+                }
                 _ => unreachable!(),
             }
         },
@@ -78,10 +82,19 @@ fn main() {
     let file = fs::read_to_string("cal.test").expect("Cannot read");
     let pairs = MyParser::parse(Rule::program, &file).unwrap_or_else(|e| panic!("{}", e));
     for pair in pairs {
-        // FIXME: Is there a better way ? (Although this works all the time)
-        match pair.as_str() {
-            "" => (),
-            _ => println!("{}", eval(pair.into_inner())),
+        if !pair.as_str().is_empty() {
+            match pair.as_rule() {
+                Rule::init => {
+                    println!("Got init")
+                }
+                // FIXME: Should we remove this kind of node and match it implicitely with _ ?
+                Rule::exprast => {
+                    println!("{}", eval(pair.into_inner()));
+                }
+                _ => {
+                    unreachable!()
+                }
+            }
         }
     }
 }

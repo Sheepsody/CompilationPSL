@@ -3,6 +3,7 @@
 cons = { pi }
      pi = { "PI" }
 
+name = { ASCII_ALPHA+ }
 uint = { ASCII_DIGIT+ }
 int = { ("-" | "+")? ~ uint }
 
@@ -25,9 +26,14 @@ unary = { operator ~ term }
 call = { function ~ "(" ~ expr ~ ")" }
 
 term = _{ num | cons | "(" ~ expr ~ ")" | call }
-expr = _{ binary | unary }
+expr = _{ binary | unary | call }
 
-program = _{ SOI ~ (expr ~ ";")* ~ EOI }
+init = { "let" ~ name ~ "=" ~ term }
+
+exprast = { expr }
+item = _{ exprast | init }
+
+program = _{ SOI ~ (item ~ ";")* ~ EOI }
 
 // Implicit whitespace & comment
 
