@@ -44,7 +44,7 @@ expr = _{ binary | unary | call }
 exprast = { expr }
 item = _{ init | exprast }
 
-program = _{ SOI ~ item ~ (";" ~ item)* ~ ";" ~ EOI }
+program = _{ SOI ~ item ~ (";" ~ item)* ~ ";"? ~ EOI }
 
 // Implicit whitespace & comment
 

@@ -11,9 +11,8 @@ use pest::prec_climber::*;
 use pest::Parser;
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::env;
 use std::f64::consts;
-use std::fs;
+use std::io::{self, Write};
 use std::option::Option;
 use std::rc::Rc;
 use std::string::String;
@@ -110,7 +109,7 @@ fn print_variables_dict(dict: Rc<RefCell<Box<VarDict>>>) {
     }
 }
 
-fn execute(string: &str, dict: Rc<RefCell<Box<VarDict>>>) -> Option<f64> {
+pub fn execute(string: &str, dict: Rc<RefCell<Box<VarDict>>>) -> Option<f64> {
     let mut output: Option<f64> = Option::None;
     let pairs = MyParser::parse(Rule::program, string).unwrap_or_else(|e| panic!("{}", e));
     for pair in pairs {
@@ -136,12 +135,29 @@ fn execute(string: &str, dict: Rc<RefCell<Box<VarDict>>>) -> Option<f64> {
 }
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
-    let filename = args.get(1).expect("Please specify a file");
-    let file = fs::read_to_string(&filename).expect("Cannot read");
+    println!("言語 Calculator \n");
+
     let dict = Rc::new(RefCell::new(Box::new(VarDict::new())));
-    if let Some(result) = execute(&file, dict.clone()) {
-        println!("Result : {}", result);
+    loop {
+        let mut s = String::new();
+        print!(">>> ");
+        io::stdout().flush().unwrap();
+
+        io::stdin()
+            .read_line(&mut s)
+            .expect("Excepted a correct String");
+
+        if s == "close\n" {
+            break;
+        }
+
+        if MyParser::parse(Rule::program, &s).is_err() {
+            println!("Input not correct");
+        } else {
+            if let Some(result) = execute(&s, dict.clone()) {
+                println!("Result : {}", result);
+            }
+        }
     }
     print_variables_dict(dict.clone());
 }
