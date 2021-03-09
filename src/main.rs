@@ -77,5 +77,11 @@ fn eval(expression: Pairs<Rule>) -> f64 {
 fn main() {
     let file = fs::read_to_string("cal.test").expect("Cannot read");
     let pairs = MyParser::parse(Rule::program, &file).unwrap_or_else(|e| panic!("{}", e));
-    println!("{}", eval(pairs));
+    for pair in pairs {
+        // FIXME: Is there a better way ? (Although this works all the time)
+        match pair.as_str() {
+            "" => (),
+            _ => println!("{}", eval(pair.into_inner())),
+        }
+    }
 }
