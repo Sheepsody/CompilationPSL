@@ -8,6 +8,8 @@ int = { ("-" | "+")? ~ uint }
 
 num = @{ int ~ ("." ~ uint)? ~ ("e" ~ int)? }
 
+bool = @{ "true" | "false" }
+
 operator = _{ add | subtract | multiply | divide | power }
     add      = { "+" }
     subtract = { "-" }
@@ -19,7 +21,7 @@ function = _{ cos }
     cos      = @{ "cos" }
 
 // FIXME: Problème avec les constantes définies telles quelles....
-ident = @{ &( !( cons | function | "let" ) ~ ANY)  ~ ASCII_ALPHA+ }
+ident = @{ &( !( cons | function | "let" | "true" | "false" ) ~ ANY)  ~ ASCII_ALPHA+ }
 
 // Parsing
 
@@ -27,7 +29,7 @@ binary = { term ~ (operator ~ term)*}
 unary = { operator ~ term }
 call = { function ~ "(" ~ expr ~ ")" }
 
-term = _{ num | cons | ident | "(" ~ expr ~ ")" | call }
+term = _{ num | bool | cons | ident | "(" ~ expr ~ ")" | call }
 expr = _{ binary | unary | call }
 
 init = { "let" ~ ident ~ "=" ~ term }

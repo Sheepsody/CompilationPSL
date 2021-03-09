@@ -67,10 +67,11 @@ fn eval(expression: Pairs<Rule>, dict: Rc<RefCell<Box<VarDict>>>) -> f64 {
                         _ => unreachable!(),
                     }
                 }
-                Rule::expr => {
-                    println!("Fuck");
-                    unreachable!()
-                }
+                Rule::bool => match pair.as_str() {
+                    "true" => 1.0,
+                    "false" => 0.0,
+                    _ => unreachable!(),
+                },
                 _ => unreachable!(),
             }
         },

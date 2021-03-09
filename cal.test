@@ -1,7 +1,10 @@
+1;
 (-PI) - cos(2);
 1+2;
 cos(2);
 let x = 4;
 let y = 2;
 x - 2;
+false;
+/* Variable usage */
 cos(y);
