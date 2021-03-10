@@ -42,6 +42,9 @@ fn primary(pair: Pair<Rule>) -> Node {
         Rule::num => Node::NumberExpr {
             value: pair.as_str().parse::<f64>().unwrap(),
         },
+        Rule::ident => Node::IdentExpr {
+            name: String::from(pair.as_str()),
+        },
         Rule::unaryexpr => {
             let mut pair = pair.into_inner();
             let operator = match pair.next().unwrap().as_rule() {
@@ -117,6 +120,16 @@ mod parsing {
                 op: Op::Add,
                 lhs: Box::new(Node::NumberExpr { value: 1.0 }),
                 rhs: Box::new(Node::NumberExpr { value: 2.0 })
+            }
+        )
+    }
+
+    #[test]
+    fn identifier() {
+        assert_eq!(
+            parse("x"),
+            Node::IdentExpr {
+                name: String::from("x")
             }
         )
     }

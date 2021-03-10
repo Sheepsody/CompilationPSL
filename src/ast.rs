@@ -1,6 +1,11 @@
+use std::string::String;
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Node {
     Expr,
+    IdentExpr {
+        name: String,
+    },
     NumberExpr {
         value: f64,
     },
