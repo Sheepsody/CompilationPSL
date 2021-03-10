@@ -4,6 +4,7 @@ use std::string::String;
 pub enum Node {
     NumberExpr(f64),
     IdentExpr(String),
+    BlockExpr(Vec<Node>),
     UnaryExpr {
         op: Op,
         child: Box<Node>,
@@ -20,6 +21,13 @@ pub enum Node {
     AssignExpr {
         ident: String,
         expr: Box<Node>,
+    },
+    ProtoExpr(Vec<String>),
+    FuncExpr {
+        ident: String,
+        // FIXME: Node instead of specific object
+        proto: Box<Node>,
+        body: Box<Node>,
     },
 }
 
