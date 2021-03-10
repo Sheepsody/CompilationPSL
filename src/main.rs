@@ -11,5 +11,7 @@ extern crate lazy_static;
 use parser::parse;
 
 fn main() {
+    // TODO : Load a file
+    // TODO : AST Tree printer ?
     parse("test");
 }

@@ -16,21 +16,21 @@ pub enum Node {
         rhs: Box<Node>,
     },
     InitExpr {
-        ident: String,
+        ident: Box<Node>,
         expr: Box<Node>,
     },
     AssignExpr {
-        ident: String,
+        ident: Box<Node>,
         expr: Box<Node>,
     },
     ProtoExpr(Vec<String>),
     FuncExpr {
-        ident: String,
+        ident: Box<Node>,
         proto: Box<Node>,
         body: Box<Node>,
     },
     CallExpr {
-        ident: String,
+        ident: Box<Node>,
         args: Vec<Node>,
     },
     IfExpr {
