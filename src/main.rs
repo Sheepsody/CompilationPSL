@@ -1,8 +1,9 @@
 // TODO
-// If & While
-// Print
 // Call
+// Bool & Comparaisons
+// If & While
 // Return
+// Print
 // List
 
 // Declare the modules
@@ -85,16 +86,13 @@ fn primary(pair: Pair<Rule>) -> Node {
             let mut pair = pair.into_inner();
             let ident = String::from(pair.next().unwrap().as_str());
             let proto = pair.next().unwrap();
-            let mut protonode = Node::ProtoExpr(vec![]);
-            if !proto.as_str().is_empty() {
-                protonode = Node::ProtoExpr(
-                    proto
-                        .into_inner()
-                        .into_iter()
-                        .map(|p| String::from(p.as_str()))
-                        .collect(),
-                )
-            };
+            let protonode = Node::ProtoExpr(
+                proto
+                    .into_inner()
+                    .into_iter()
+                    .map(|p| String::from(p.as_str()))
+                    .collect(),
+            );
             let mut blocknode = Node::BlockExpr(vec![]);
             if !pair.as_str().is_empty() {
                 blocknode = ast_from_pairs(pair);
@@ -103,6 +101,16 @@ fn primary(pair: Pair<Rule>) -> Node {
                 ident,
                 proto: Box::new(protonode),
                 body: Box::new(blocknode),
+            }
+        }
+        Rule::callexpr => {
+            let mut pairs: Vec<Node> = pair.into_inner().into_iter().map(|e| primary(e)).collect();
+            match pairs.remove(0) {
+                Node::IdentExpr(s) => Node::CallExpr {
+                    ident: s,
+                    args: pairs,
+                },
+                _ => unreachable!(),
             }
         }
         _ => unreachable!(),
@@ -239,6 +247,35 @@ mod parsing {
                     Node::NumberExpr(6.0),
                     Node::NumberExpr(7.0)
                 ])),
+            }
+        )
+    }
+
+    #[test]
+    fn call_empty() {
+        assert_eq!(
+            parse_single("ze();"),
+            Node::CallExpr {
+                ident: String::from("ze"),
+                args: vec![]
+            }
+        )
+    }
+
+    #[test]
+    fn call() {
+        assert_eq!(
+            parse_single("yz(1+3, cd);"),
+            Node::CallExpr {
+                ident: String::from("yz"),
+                args: vec![
+                    Node::BinaryExpr {
+                        lhs: Box::new(Node::NumberExpr(1.0)),
+                        op: Op::Add,
+                        rhs: Box::new(Node::NumberExpr(3.0)),
+                    },
+                    Node::IdentExpr(String::from("cd")),
+                ]
             }
         )
     }

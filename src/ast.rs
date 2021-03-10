@@ -29,6 +29,10 @@ pub enum Node {
         proto: Box<Node>,
         body: Box<Node>,
     },
+    CallExpr {
+        ident: String,
+        args: Vec<Node>,
+    },
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]

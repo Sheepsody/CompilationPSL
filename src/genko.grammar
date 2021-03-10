@@ -35,13 +35,13 @@ initexpr = { let_ ~ ident ~ "=" ~ expr }
 assignexpr = { ident ~ "=" ~ expr }
 protoexpr = { "(" ~ (ident ~ ("," ~ ident)* )? ~ ")" }
 funcexpr = { func_ ~ ident ~ protoexpr ~ blockexpr }
+callexpr = { ident ~ "(" ~ (expr ~ ("," ~ expr)* )? ~ ")" }
 
 binaryexpr = { term ~ (operator ~ term)*}
 unaryexpr = { operator ~ term }
-call = { ident ~ "(" ~ expr ~ ")" }
 
-term = _{ num | bool | "(" ~ expr ~ ")" | call | ident } // Warning! ident at the end
-expr = _{ binaryexpr | unaryexpr | call }
+term = _{ num | bool | "(" ~ expr ~ ")" | callexpr | ident } // Warning! ident at the end
+expr = _{ binaryexpr | unaryexpr | callexpr }
 
 
 line = _{ initexpr | assignexpr | blockexpr | funcexpr | expr }
