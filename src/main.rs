@@ -42,8 +42,7 @@ fn primary(pair: Pair<Rule>) -> Node {
         Rule::num => Node::NumberExpr {
             value: pair.as_str().parse::<f64>().unwrap(),
         },
-        Rule::exprast => ast_from_node(pair.into_inner()),
-        Rule::unary => {
+        Rule::unaryexpr => {
             let mut pair = pair.into_inner();
             let operator = match pair.next().unwrap().as_rule() {
                 Rule::sub => Op::Sub,
@@ -55,7 +54,7 @@ fn primary(pair: Pair<Rule>) -> Node {
             }
         }
         // Predecence climbing
-        Rule::binary => ast_from_node(pair.into_inner()),
+        Rule::binaryexpr => ast_from_node(pair.into_inner()),
         _ => unreachable!(),
     }
 }

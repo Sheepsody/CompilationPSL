@@ -1,4 +1,6 @@
-// Lexing
+////////////
+// Lexing //
+////////////
 
 cons = { pi }
      pi = @{ "PI" }
@@ -26,23 +28,23 @@ operator = _{ add | sub | mul | div | pow | eq | le | ge | lt | gt | and | or}
 function = _{ cos }
     cos      = @{ "cos" }
 
-// FIXME: Problème avec les constantes définies telles quelles....
 ident = @{ ASCII_ALPHA+ }
 
-// Parsing
+
+/////////////
+// Parsing //
+/////////////
 
 init = { ident ~ ":=" ~ expr }
 
-binary = { term ~ (operator ~ term)*}
-unary = { operator ~ term }
+binaryexpr = { term ~ (operator ~ term)*}
+unaryexpr = { operator ~ term }
 call = { function ~ "(" ~ expr ~ ")" }
 
 term = _{ num | bool | cons | "(" ~ expr ~ ")" | call | ident } // Warning! ident at the end
-expr = _{ binary | unary | call }
+expr = _{ binaryexpr | unaryexpr | call }
 
-
-exprast = { expr }
-item = _{ init | exprast }
+item = _{ init | expr }
 
 program = _{ SOI ~ item ~ (";" ~ item)* ~ ";"? ~ EOI }
 

@@ -1,4 +1,3 @@
-// TODO Bool,
 #[derive(Debug, Clone, PartialEq)]
 pub enum Node {
     Expr,
