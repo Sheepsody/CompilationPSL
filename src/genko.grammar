@@ -2,11 +2,22 @@
 // Lexing //
 ////////////
 
+// Reserved symbols
+
+LET = _{ "let" }
+FUNC = _{ "fn" }
+IF = _{ "if" }
+THEN = _{ "then" }
+
+// Types
+
 uint = { ASCII_DIGIT+ }
 int = { ("-" | "+")? ~ uint }
 num = @{ int ~ ("." ~ uint)? ~ ("e" ~ int)? }
 
 bool = @{ "true" | "false" }
+
+// Operators
 
 operator = _{ add | sub | mul | div | pow | eq | le | ge | lt | gt | and | or}
     add      = @{ "+" }
@@ -22,8 +33,7 @@ operator = _{ add | sub | mul | div | pow | eq | le | ge | lt | gt | and | or}
     and     = @{ "&&" }
     or     = @{ "||" }
 
-let_ = _{ "let" }
-func_ = _{ "fn" }
+// Identifiers (all alpha strings not above)
 
 ident = @{ ASCII_ALPHA+ }
 
@@ -31,11 +41,14 @@ ident = @{ ASCII_ALPHA+ }
 // Parsing //
 /////////////
 
-initexpr = { let_ ~ ident ~ "=" ~ expr }
+initexpr = { LET ~ ident ~ "=" ~ expr }
 assignexpr = { ident ~ "=" ~ expr }
+
 protoexpr = { "(" ~ (ident ~ ("," ~ ident)* )? ~ ")" }
-funcexpr = { func_ ~ ident ~ protoexpr ~ blockexpr }
+funcexpr = { FUNC ~ ident ~ protoexpr ~ blockexpr }
 callexpr = { ident ~ "(" ~ (expr ~ ("," ~ expr)* )? ~ ")" }
+
+ifexpr = { IF ~ term ~ THEN ~ blockexpr }
 
 binaryexpr = { term ~ (operator ~ term)*}
 unaryexpr = { operator ~ term }
@@ -43,8 +56,8 @@ unaryexpr = { operator ~ term }
 term = _{ num | bool | "(" ~ expr ~ ")" | callexpr | ident } // Warning! ident at the end
 expr = _{ binaryexpr | unaryexpr | callexpr }
 
-
-line = _{ initexpr | assignexpr | blockexpr | funcexpr | expr }
+// Ultimately no expr!
+line = _{ initexpr | assignexpr | blockexpr | funcexpr | ifexpr | expr }
 
 lines = _{ (line ~ ";")+ }
 program = { SOI ~ lines ~ EOI }

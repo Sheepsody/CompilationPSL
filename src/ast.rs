@@ -26,13 +26,16 @@ pub enum Node {
     ProtoExpr(Vec<String>),
     FuncExpr {
         ident: String,
-        // FIXME: Node instead of specific object
         proto: Box<Node>,
         body: Box<Node>,
     },
     CallExpr {
         ident: String,
         args: Vec<Node>,
+    },
+    IfExpr {
+        cond: Box<Node>,
+        then: Box<Node>,
     },
 }
 

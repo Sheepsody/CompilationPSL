@@ -1,9 +1,10 @@
 // TODO
-// Bool & Comparaisons
-// If & While
-// Return
 // Print
-// List
+
+// Optionnals
+// Return
+// While
+// Listes
 
 // Declare the modules
 pub mod ast;
@@ -44,12 +45,12 @@ lazy_static! {
     };
 }
 
-fn primary(pair: Pair<Rule>) -> Node {
+fn parse_pair(pair: Pair<Rule>) -> Node {
     match pair.as_rule() {
         Rule::num => Node::NumberExpr(pair.as_str().parse::<f64>().unwrap()),
         Rule::ident => Node::IdentExpr(String::from(pair.as_str())),
         Rule::bool => Node::BoolExpr(match pair.as_str() {
-            "true" => false,
+            "true" => true,
             "false" => false,
             _ => unreachable!(),
         }),
@@ -61,28 +62,28 @@ fn primary(pair: Pair<Rule>) -> Node {
             };
             Node::UnaryExpr {
                 op: operator,
-                child: Box::new(ast_from_pairs(pair)),
+                child: Box::new(parse_pairs(pair)),
             }
         }
         // Predecence climbing
-        Rule::binaryexpr => ast_from_pairs(pair.into_inner()),
+        Rule::binaryexpr => parse_pairs(pair.into_inner()),
         Rule::initexpr => {
             let mut pair = pair.into_inner();
             let ident = String::from(pair.next().unwrap().as_str());
-            let expr = Box::new(ast_from_pairs(pair));
+            let expr = Box::new(parse_pairs(pair));
             Node::InitExpr { ident, expr }
         }
         Rule::assignexpr => {
             let mut pair = pair.into_inner();
             let ident = String::from(pair.next().unwrap().as_str());
-            let expr = Box::new(ast_from_pairs(pair));
+            let expr = Box::new(parse_pairs(pair));
             Node::AssignExpr { ident, expr }
         }
         Rule::blockexpr => Node::BlockExpr(
             pair.into_inner()
                 .into_iter()
                 // .filter(|p| !p.as_str().is_empty())
-                .map(|p| ast_from_pairs(p.into_inner()))
+                .map(|p| parse_pairs(p.into_inner()))
                 .collect(),
         ),
         Rule::protoexpr => Node::ProtoExpr(vec![]),
@@ -99,7 +100,7 @@ fn primary(pair: Pair<Rule>) -> Node {
             );
             let mut blocknode = Node::BlockExpr(vec![]);
             if !pair.as_str().is_empty() {
-                blocknode = ast_from_pairs(pair);
+                blocknode = parse_pairs(pair);
             };
             Node::FuncExpr {
                 ident,
@@ -108,13 +109,26 @@ fn primary(pair: Pair<Rule>) -> Node {
             }
         }
         Rule::callexpr => {
-            let mut pairs: Vec<Node> = pair.into_inner().into_iter().map(|e| primary(e)).collect();
+            let mut pairs: Vec<Node> = pair
+                .into_inner()
+                .into_iter()
+                .map(|e| parse_pair(e))
+                .collect();
             match pairs.remove(0) {
                 Node::IdentExpr(s) => Node::CallExpr {
                     ident: s,
                     args: pairs,
                 },
                 _ => unreachable!(),
+            }
+        }
+        Rule::ifexpr => {
+            let mut pair = pair.into_inner();
+            let cond = parse_pair(pair.next().unwrap());
+            let then = parse_pair(pair.next().unwrap());
+            Node::IfExpr {
+                cond: Box::new(cond),
+                then: Box::new(then),
             }
         }
         _ => unreachable!(),
@@ -144,8 +158,8 @@ fn reduce(lhs: Node, op: Pair<Rule>, rhs: Node) -> Node {
     }
 }
 
-fn ast_from_pairs(pairs: Pairs<Rule>) -> Node {
-    PREC_CLIMBER.climb(pairs, primary, reduce)
+fn parse_pairs(pairs: Pairs<Rule>) -> Node {
+    PREC_CLIMBER.climb(pairs, parse_pair, reduce)
 }
 
 fn parse(string: &str) -> Vec<Node> {
@@ -154,7 +168,7 @@ fn parse(string: &str) -> Vec<Node> {
     // FIXME: Handle line instead of iterating through them
     for pair in pairs {
         if !pair.as_str().is_empty() {
-            result.push(ast_from_pairs(pair.into_inner()));
+            result.push(parse_pairs(pair.into_inner()));
         }
     }
     result
@@ -291,6 +305,21 @@ mod parsing {
 
     #[test]
     fn bool_true() {
-        assert_eq!(parse_single("false;"), Node::BoolExpr(false),)
+        assert_eq!(parse_single("true;"), Node::BoolExpr(true),)
+    }
+
+    #[test]
+    fn cond_if() {
+        assert_eq!(
+            parse_single("if true then {1+3;};"),
+            Node::IfExpr {
+                cond: Box::new(Node::BoolExpr(true)),
+                then: Box::new(Node::BlockExpr(vec![Node::BinaryExpr {
+                    lhs: Box::new(Node::NumberExpr(1.0)),
+                    op: Op::Add,
+                    rhs: Box::new(Node::NumberExpr(3.0)),
+                },]))
+            }
+        )
     }
 }
