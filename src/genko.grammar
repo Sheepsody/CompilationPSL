@@ -38,6 +38,7 @@ ident = @{ ASCII_ALPHA+ }
 /////////////
 
 initexpr = { "let" ~ ident ~ "=" ~ expr }
+assignexpr = { ident ~ "=" ~ expr }
 
 binaryexpr = { term ~ (operator ~ term)*}
 unaryexpr = { operator ~ term }
@@ -47,7 +48,7 @@ term = _{ num | bool | cons | "(" ~ expr ~ ")" | call | ident } // Warning! iden
 expr = _{ binaryexpr | unaryexpr | call }
 
 
-line = _{ initexpr | expr }
+line = _{ initexpr | assignexpr | expr }
 program = { SOI ~ line ~ (";" ~ line)* ~ ";"? ~ EOI }
 
 // Implicit whitespace & comment

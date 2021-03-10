@@ -55,11 +55,16 @@ fn primary(pair: Pair<Rule>) -> Node {
         // Predecence climbing
         Rule::binaryexpr => ast_from_pairs(pair.into_inner()),
         Rule::initexpr => {
-            println!("{}", pair.as_str());
             let mut pair = pair.into_inner();
             let ident = String::from(pair.next().unwrap().as_str());
             let expr = Box::new(ast_from_pairs(pair));
             Node::InitExpr { ident, expr }
+        }
+        Rule::assignexpr => {
+            let mut pair = pair.into_inner();
+            let ident = String::from(pair.next().unwrap().as_str());
+            let expr = Box::new(ast_from_pairs(pair));
+            Node::AssignExpr { ident, expr }
         }
         _ => unreachable!(),
     }
@@ -143,6 +148,17 @@ mod parsing {
         assert_eq!(
             parse_single("let a = 1"),
             Node::InitExpr {
+                ident: String::from("a"),
+                expr: Box::new(Node::NumberExpr(1.0))
+            }
+        )
+    }
+
+    #[test]
+    fn assignement() {
+        assert_eq!(
+            parse_single("a = 1"),
+            Node::AssignExpr {
                 ident: String::from("a"),
                 expr: Box::new(Node::NumberExpr(1.0))
             }

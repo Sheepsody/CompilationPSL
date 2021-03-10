@@ -17,6 +17,10 @@ pub enum Node {
         ident: String,
         expr: Box<Node>,
     },
+    AssignExpr {
+        ident: String,
+        expr: Box<Node>,
+    },
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
