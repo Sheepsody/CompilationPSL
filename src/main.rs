@@ -49,7 +49,10 @@ fn eval(expression: Pairs<Rule>, dict: Rc<RefCell<Box<VarDict>>>) -> f64 {
         |pair: Pair<Rule>| -> f64 {
             match pair.as_rule() {
                 Rule::num => pair.as_str().parse::<f64>().unwrap(),
-                Rule::ident => *dict.borrow().get(pair.as_str()).unwrap(),
+                Rule::ident => *dict
+                    .borrow()
+                    .get(pair.as_str())
+                    .expect("Variable not initialized"),
                 Rule::cons => {
                     let mut pair = pair.into_inner();
                     match pair.next().unwrap().as_rule() {
@@ -118,8 +121,8 @@ pub fn execute(string: &str, dict: Rc<RefCell<Box<VarDict>>>) -> Option<f64> {
                 Rule::init => {
                     let mut pair = pair.into_inner();
                     let ident = pair.next().unwrap().as_str();
-                    dict.borrow_mut()
-                        .insert(String::from(ident), eval(pair, dict.clone()));
+                    let value = eval(pair, dict.clone());
+                    dict.borrow_mut().insert(String::from(ident), value);
                 }
                 // FIXME: Should we remove this kind of node and match it implicitely with _ ?
                 Rule::exprast => {
@@ -160,4 +163,103 @@ fn main() {
         }
     }
     print_variables_dict(dict.clone());
+}
+
+#[cfg(test)]
+mod genko {
+    use super::*;
+
+    #[test]
+    fn double() {
+        let dict = Rc::new(RefCell::new(Box::new(VarDict::new())));
+        assert_eq!(execute("6.7689e2", dict.clone()).unwrap(), 676.89);
+    }
+
+    #[test]
+    fn addition() {
+        let dict = Rc::new(RefCell::new(Box::new(VarDict::new())));
+        assert_eq!(execute("5+6", dict.clone()).unwrap(), 11.0);
+    }
+
+    #[test]
+    fn associatibite() {
+        let dict = Rc::new(RefCell::new(Box::new(VarDict::new())));
+        assert_eq!(execute("5-(6+7)", dict.clone()).unwrap(), -8.0);
+    }
+
+    #[test]
+    fn precedence() {
+        let dict = Rc::new(RefCell::new(Box::new(VarDict::new())));
+        assert_eq!(execute("5+6*2", dict.clone()).unwrap(), 17.0);
+    }
+
+    #[test]
+    fn inversion() {
+        let dict = Rc::new(RefCell::new(Box::new(VarDict::new())));
+        assert_eq!(execute("-1", dict.clone()).unwrap(), -1.0);
+    }
+
+    #[test]
+    fn constants() {
+        let dict = Rc::new(RefCell::new(Box::new(VarDict::new())));
+        assert_eq!(execute("PI", dict.clone()).unwrap(), consts::PI);
+    }
+
+    #[test]
+    fn cos() {
+        let dict = Rc::new(RefCell::new(Box::new(VarDict::new())));
+        assert_eq!(execute("cos(PI)", dict.clone()).unwrap(), -1.0);
+    }
+
+    #[test]
+    fn puissance() {
+        let dict = Rc::new(RefCell::new(Box::new(VarDict::new())));
+        assert_eq!(execute("2^10", dict.clone()).unwrap(), 1024.0);
+    }
+
+    #[test]
+    fn declaration() {
+        let dict = Rc::new(RefCell::new(Box::new(VarDict::new())));
+        assert!(execute("x := 1", dict.clone()).is_none());
+        assert_eq!(dict.borrow().get("x").unwrap(), &1.0);
+    }
+
+    #[test]
+    fn utilisation() {
+        let dict = Rc::new(RefCell::new(Box::new(VarDict::new())));
+        assert_eq!(execute("x := 8.9; x*2", dict.clone()).unwrap(), 17.8);
+    }
+
+    #[test]
+    fn booleen() {
+        let dict = Rc::new(RefCell::new(Box::new(VarDict::new())));
+        assert_eq!(execute("true", dict.clone()).unwrap(), 1.0);
+    }
+
+    #[test]
+    fn comparaisons() {
+        let dict = Rc::new(RefCell::new(Box::new(VarDict::new())));
+        assert_eq!(execute("10 > 8", dict.clone()).unwrap(), 1.0);
+    }
+
+    #[test]
+    fn logique() {
+        let dict = Rc::new(RefCell::new(Box::new(VarDict::new())));
+        assert_eq!(execute("true && false", dict.clone()).unwrap(), 0.0);
+    }
+
+    #[test]
+    fn plusieurs() {
+        let dict = Rc::new(RefCell::new(Box::new(VarDict::new())));
+        assert_eq!(
+            execute("x := 8; y := x/2; x*y", dict.clone()).unwrap(),
+            32.0
+        );
+    }
+
+    #[test]
+    fn commentaire() {
+        let dict = Rc::new(RefCell::new(Box::new(VarDict::new())));
+        assert_eq!(execute(" 1+/* NIMP */2", dict.clone()).unwrap(), 3.0);
+    }
 }

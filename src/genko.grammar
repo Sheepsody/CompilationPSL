@@ -31,7 +31,7 @@ ident = @{ ASCII_ALPHA+ }
 
 // Parsing
 
-init = { ident ~ ":=" ~ term }
+init = { ident ~ ":=" ~ expr }
 
 binary = { term ~ (operator ~ term)*}
 unary = { operator ~ term }
