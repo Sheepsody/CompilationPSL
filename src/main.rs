@@ -1,7 +1,9 @@
 // TODO
-// Print
+// Move AST code in clean
 
 // Optionnals
+// Print
+// Else as Option
 // Return
 // While
 // Listes
@@ -164,14 +166,12 @@ fn parse_pairs(pairs: Pairs<Rule>) -> Node {
 
 fn parse(string: &str) -> Vec<Node> {
     let pairs = MyParser::parse(Rule::program, string).unwrap_or_else(|e| panic!("{}", e));
-    let mut result: Vec<Node> = Vec::new();
-    // FIXME: Handle line instead of iterating through them
-    for pair in pairs {
-        if !pair.as_str().is_empty() {
-            result.push(parse_pairs(pair.into_inner()));
-        }
-    }
-    result
+
+    pairs
+        .into_iter()
+        .filter(|p| !p.as_str().is_empty())
+        .map(|p| parse_pair(p))
+        .collect()
 }
 
 fn main() {

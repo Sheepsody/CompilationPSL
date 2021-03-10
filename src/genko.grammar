@@ -60,7 +60,7 @@ expr = _{ binaryexpr | unaryexpr | callexpr }
 line = _{ initexpr | assignexpr | blockexpr | funcexpr | ifexpr | expr }
 
 lines = _{ (line ~ ";")+ }
-program = { SOI ~ lines ~ EOI }
+program = _{ SOI ~ lines ~ EOI }
 
 blockexpr = { "{" ~ lines? ~ "}" }
 
