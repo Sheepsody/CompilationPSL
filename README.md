@@ -21,3 +21,9 @@ cargo run
 # Tests
 cargo test
 ```
+
+## Limitations
+
+- Seul type double
+- Pas de fonctions
+- Pas d'AST
