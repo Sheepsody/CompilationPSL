@@ -53,11 +53,11 @@ fn primary(pair: Pair<Rule>) -> Node {
             };
             Node::UnaryExpr {
                 op: operator,
-                child: Box::new(ast_from_node(pair)),
+                child: Box::new(ast_from_pairs(pair)),
             }
         }
         // Predecence climbing
-        Rule::binaryexpr => ast_from_node(pair.into_inner()),
+        Rule::binaryexpr => ast_from_pairs(pair.into_inner()),
         _ => unreachable!(),
     }
 }
@@ -85,18 +85,19 @@ fn reduce(lhs: Node, op: Pair<Rule>, rhs: Node) -> Node {
     }
 }
 
-fn ast_from_node(expression: Pairs<Rule>) -> Node {
-    PREC_CLIMBER.climb(expression, primary, reduce)
+fn ast_from_pairs(pairs: Pairs<Rule>) -> Node {
+    PREC_CLIMBER.climb(pairs, primary, reduce)
 }
 
-fn parse(string: &str) -> Node {
+fn parse(string: &str) -> Vec<Node> {
     let pairs = MyParser::parse(Rule::program, string).unwrap_or_else(|e| panic!("{}", e));
+    let mut result: Vec<Node> = Vec::new();
     for pair in pairs {
         if !pair.as_str().is_empty() {
-            return ast_from_node(pair.into_inner());
+            result.push(ast_from_pairs(pair.into_inner()));
         }
     }
-    Node::NumberExpr { value: 0.0 }
+    result
 }
 
 fn main() {
@@ -107,15 +108,19 @@ fn main() {
 mod parsing {
     use super::*;
 
+    fn parse_single(string: &str) -> Node {
+        parse(string).remove(0)
+    }
+
     #[test]
     fn number() {
-        assert_eq!(parse("1"), Node::NumberExpr { value: 1.0 });
+        assert_eq!(parse_single("1"), Node::NumberExpr { value: 1.0 });
     }
 
     #[test]
     fn binary() {
         assert_eq!(
-            parse("1+2"),
+            parse_single("1+2"),
             Node::BinaryExpr {
                 op: Op::Add,
                 lhs: Box::new(Node::NumberExpr { value: 1.0 }),
@@ -127,7 +132,7 @@ mod parsing {
     #[test]
     fn identifier() {
         assert_eq!(
-            parse("x"),
+            parse_single("x"),
             Node::IdentExpr {
                 name: String::from("x")
             }

@@ -44,9 +44,9 @@ call = { function ~ "(" ~ expr ~ ")" }
 term = _{ num | bool | cons | "(" ~ expr ~ ")" | call | ident } // Warning! ident at the end
 expr = _{ binaryexpr | unaryexpr | call }
 
-item = _{ init | expr }
 
-program = _{ SOI ~ item ~ (";" ~ item)* ~ ";"? ~ EOI }
+line = _{ init | expr }
+program = _{ SOI ~ line ~ (";" ~ line)* ~ ";"? ~ EOI }
 
 // Implicit whitespace & comment
 
