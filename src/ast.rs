@@ -2,13 +2,8 @@ use std::string::String;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Node {
-    Expr,
-    IdentExpr {
-        name: String,
-    },
-    NumberExpr {
-        value: f64,
-    },
+    NumberExpr(f64),
+    IdentExpr(String),
     UnaryExpr {
         op: Op,
         child: Box<Node>,
@@ -17,6 +12,10 @@ pub enum Node {
         op: Op,
         lhs: Box<Node>,
         rhs: Box<Node>,
+    },
+    InitExpr {
+        ident: String,
+        expr: Box<Node>,
     },
 }
 

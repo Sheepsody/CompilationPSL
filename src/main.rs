@@ -39,12 +39,8 @@ lazy_static! {
 
 fn primary(pair: Pair<Rule>) -> Node {
     match pair.as_rule() {
-        Rule::num => Node::NumberExpr {
-            value: pair.as_str().parse::<f64>().unwrap(),
-        },
-        Rule::ident => Node::IdentExpr {
-            name: String::from(pair.as_str()),
-        },
+        Rule::num => Node::NumberExpr(pair.as_str().parse::<f64>().unwrap()),
+        Rule::ident => Node::IdentExpr(String::from(pair.as_str())),
         Rule::unaryexpr => {
             let mut pair = pair.into_inner();
             let operator = match pair.next().unwrap().as_rule() {
@@ -58,6 +54,13 @@ fn primary(pair: Pair<Rule>) -> Node {
         }
         // Predecence climbing
         Rule::binaryexpr => ast_from_pairs(pair.into_inner()),
+        Rule::initexpr => {
+            println!("{}", pair.as_str());
+            let mut pair = pair.into_inner();
+            let ident = String::from(pair.next().unwrap().as_str());
+            let expr = Box::new(ast_from_pairs(pair));
+            Node::InitExpr { ident, expr }
+        }
         _ => unreachable!(),
     }
 }
@@ -92,6 +95,7 @@ fn ast_from_pairs(pairs: Pairs<Rule>) -> Node {
 fn parse(string: &str) -> Vec<Node> {
     let pairs = MyParser::parse(Rule::program, string).unwrap_or_else(|e| panic!("{}", e));
     let mut result: Vec<Node> = Vec::new();
+    // FIXME: Handle line instead of iterating through them
     for pair in pairs {
         if !pair.as_str().is_empty() {
             result.push(ast_from_pairs(pair.into_inner()));
@@ -114,7 +118,7 @@ mod parsing {
 
     #[test]
     fn number() {
-        assert_eq!(parse_single("1"), Node::NumberExpr { value: 1.0 });
+        assert_eq!(parse_single("1"), Node::NumberExpr(1.0));
     }
 
     #[test]
@@ -123,18 +127,24 @@ mod parsing {
             parse_single("1+2"),
             Node::BinaryExpr {
                 op: Op::Add,
-                lhs: Box::new(Node::NumberExpr { value: 1.0 }),
-                rhs: Box::new(Node::NumberExpr { value: 2.0 })
+                lhs: Box::new(Node::NumberExpr(1.0)),
+                rhs: Box::new(Node::NumberExpr(2.0))
             }
         )
     }
 
     #[test]
     fn identifier() {
+        assert_eq!(parse_single("x"), Node::IdentExpr(String::from("x")))
+    }
+
+    #[test]
+    fn initialisation() {
         assert_eq!(
-            parse_single("x"),
-            Node::IdentExpr {
-                name: String::from("x")
+            parse_single("let a = 1"),
+            Node::InitExpr {
+                ident: String::from("a"),
+                expr: Box::new(Node::NumberExpr(1.0))
             }
         )
     }

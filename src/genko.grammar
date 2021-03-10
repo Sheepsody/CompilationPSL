@@ -25,17 +25,19 @@ operator = _{ add | sub | mul | div | pow | eq | le | ge | lt | gt | and | or}
     and     = @{ "&&" }
     or     = @{ "||" }
 
+
 function = _{ cos }
     cos      = @{ "cos" }
 
-ident = @{ ASCII_ALPHA+ }
+let_ = _{ "let" }
 
+ident = @{ ASCII_ALPHA+ }
 
 /////////////
 // Parsing //
 /////////////
 
-init = { ident ~ ":=" ~ expr }
+initexpr = { "let" ~ ident ~ "=" ~ expr }
 
 binaryexpr = { term ~ (operator ~ term)*}
 unaryexpr = { operator ~ term }
@@ -45,8 +47,8 @@ term = _{ num | bool | cons | "(" ~ expr ~ ")" | call | ident } // Warning! iden
 expr = _{ binaryexpr | unaryexpr | call }
 
 
-line = _{ init | expr }
-program = _{ SOI ~ line ~ (";" ~ line)* ~ ";"? ~ EOI }
+line = _{ initexpr | expr }
+program = { SOI ~ line ~ (";" ~ line)* ~ ";"? ~ EOI }
 
 // Implicit whitespace & comment
 
