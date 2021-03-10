@@ -4,6 +4,7 @@ use std::string::String;
 pub enum Node {
     NumberExpr(f64),
     IdentExpr(String),
+    BoolExpr(bool),
     BlockExpr(Vec<Node>),
     UnaryExpr {
         op: Op,

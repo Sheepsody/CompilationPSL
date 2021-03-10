@@ -1,5 +1,4 @@
 // TODO
-// Call
 // Bool & Comparaisons
 // If & While
 // Return
@@ -49,6 +48,11 @@ fn primary(pair: Pair<Rule>) -> Node {
     match pair.as_rule() {
         Rule::num => Node::NumberExpr(pair.as_str().parse::<f64>().unwrap()),
         Rule::ident => Node::IdentExpr(String::from(pair.as_str())),
+        Rule::bool => Node::BoolExpr(match pair.as_str() {
+            "true" => false,
+            "false" => false,
+            _ => unreachable!(),
+        }),
         Rule::unaryexpr => {
             let mut pair = pair.into_inner();
             let operator = match pair.next().unwrap().as_rule() {
@@ -278,5 +282,15 @@ mod parsing {
                 ]
             }
         )
+    }
+
+    #[test]
+    fn bool_false() {
+        assert_eq!(parse_single("false;"), Node::BoolExpr(false),)
+    }
+
+    #[test]
+    fn bool_true() {
+        assert_eq!(parse_single("false;"), Node::BoolExpr(false),)
     }
 }
