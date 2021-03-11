@@ -46,7 +46,6 @@ ident = @{ ASCII_ALPHA+ }
 /////////////
 
 initexpr = { LET ~ ident ~ "=" ~ expr }
-assignexpr = { ident ~ "=" ~ expr }
 
 protoexpr = { "(" ~ (ident ~ ("," ~ ident)* )? ~ ")" }
 funcexpr = { FUNC ~ ident ~ protoexpr ~ blockexpr }
@@ -54,11 +53,12 @@ callexpr = { ident ~ "(" ~ (expr ~ ("," ~ expr)* )? ~ ")" }
 
 condexpr = { IF ~ term ~ THEN ~ blockexpr ~ (ELSE ~ blockexpr)? }
 
+assignexpr = { ident ~ "=" ~ expr }
 binaryexpr = { term ~ (operator ~ term)*}
 unaryexpr = { operator ~ term }
 
 term = _{ num | bool | "(" ~ expr ~ ")" | callexpr | ident } // Warning! ident at the end
-expr = _{ binaryexpr | unaryexpr }
+expr = _{ assignexpr | binaryexpr | unaryexpr}
 
 // Ultimately no expr!
 line = _{ initexpr | assignexpr | blockexpr | funcexpr | condexpr | expr }

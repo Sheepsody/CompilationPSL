@@ -226,6 +226,20 @@ mod parsing {
     }
 
     #[test]
+    fn assignement_chaining() {
+        assert_eq!(
+            parse_single("b = a = 1;"),
+            Node::AssignExpr {
+                ident: Box::new(Node::IdentExpr(String::from("b"))),
+                expr: Box::new(Node::AssignExpr {
+                    ident: Box::new(Node::IdentExpr(String::from("a"))),
+                    expr: Box::new(Node::NumberExpr(1.0))
+                })
+            }
+        )
+    }
+
+    #[test]
     fn func_declaration_empty() {
         assert_eq!(
             parse_single("fn cat() { };"),
