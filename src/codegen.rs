@@ -15,23 +15,47 @@ type JitFunc = unsafe extern "C" fn() -> f64;
 struct RecursiveBuilder<'ctx> {
     f64_type: FloatType<'ctx>,
     builder: &'ctx Builder<'ctx>,
-    variables: HashMap<String, FloatValue<'ctx>>,
+    context: &'ctx Context,
+    variables: HashMap<String, PointerValue<'ctx>>,
+    fn_value: &'ctx FunctionValue<'ctx>,
 }
 
 impl<'ctx> RecursiveBuilder<'ctx> {
-    pub fn new(f64_type: FloatType<'ctx>, builder: &'ctx Builder) -> Self {
+    pub fn new(
+        f64_type: FloatType<'ctx>,
+        context: &'ctx Context,
+        builder: &'ctx Builder,
+        fn_value: &'ctx FunctionValue,
+    ) -> Self {
         Self {
             f64_type,
             builder,
+            context,
             variables: HashMap::new(),
+            fn_value,
         }
+    }
+
+    fn create_entry_block_alloca(&self, name: &str) -> PointerValue<'ctx> {
+        let builder = self.context.create_builder();
+        let entry = self.fn_value.get_first_basic_block().unwrap();
+
+        match entry.get_first_instruction() {
+            Some(first_instr) => builder.position_before(&first_instr),
+            None => builder.position_at_end(entry),
+        }
+
+        builder.build_alloca(self.context.f64_type(), name)
     }
 
     pub fn build(&mut self, node: &Node) -> Result<FloatValue<'ctx>, &'static str> {
         match node {
             Node::NumberExpr(nb) => Ok(self.f64_type.const_float(*nb)),
             Node::IdentExpr(name) => match self.variables.get(name.as_str()) {
-                Some(value) => Ok(*value),
+                Some(var) => Ok(self
+                    .builder
+                    .build_load(*var, name.as_str())
+                    .into_float_value()),
                 None => Err("Could not find a matching variable."),
             },
             Node::BinaryExpr { op, lhs, rhs } => {
@@ -47,7 +71,11 @@ impl<'ctx> RecursiveBuilder<'ctx> {
             Node::InitExpr { ident, expr } => {
                 if let Node::IdentExpr(name) = ident.as_ref() {
                     let expr = self.build(expr);
-                    self.variables.insert(name.clone(), expr.unwrap());
+                    let alloca = self.create_entry_block_alloca(name);
+
+                    self.builder.build_store(alloca, expr.ok().unwrap());
+
+                    self.variables.insert(name.to_string(), alloca);
                     return expr;
                 } else {
                     unimplemented!()
@@ -55,9 +83,14 @@ impl<'ctx> RecursiveBuilder<'ctx> {
             }
             Node::AssignExpr { ident, expr } => {
                 if let Node::IdentExpr(name) = ident.as_ref() {
-                    let expr = self.build(expr);
-                    self.variables.insert(name.clone(), expr.unwrap());
-                    return expr;
+                    let nval = self.build(expr).unwrap();
+                    let var = self
+                        .variables
+                        .get(name.as_str())
+                        .ok_or("Undefined variable.")
+                        .unwrap();
+                    self.builder.build_store(*var, nval);
+                    Ok(nval)
                 } else {
                     unimplemented!()
                 }
@@ -87,7 +120,7 @@ pub fn execute(string: &str) -> f64 {
 
     let mut result: Result<FloatValue, &str> = Result::Err("No return specified");
 
-    let mut recursive_builder = RecursiveBuilder::new(i64_type, &builder);
+    let mut recursive_builder = RecursiveBuilder::new(i64_type, &context, &builder, &function);
     for node in parse(string) {
         result = recursive_builder.build(&node);
     }
