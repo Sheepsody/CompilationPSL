@@ -34,6 +34,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let rhs = self.jit_compile(rhs).unwrap();
                 match op {
                     Op::Add => Ok(self.builder.build_float_add(lhs, rhs, "tmpadd")),
+                    Op::Sub => Ok(self.builder.build_float_sub(lhs, rhs, "tmpsub")),
                     // TODO: Add other ops
                     _ => unimplemented!(),
                 }
@@ -42,7 +43,15 @@ impl<'ctx> CodeGen<'ctx> {
                 if let Node::IdentExpr(name) = ident.as_ref() {
                     let expr = self.jit_compile(expr);
                     self.variables.insert(name.clone(), expr.unwrap());
-                    //                    self.builder.build_store(alloca, expr.unwrap());
+                    return expr;
+                } else {
+                    unimplemented!()
+                }
+            }
+            Node::AssignExpr { ident, expr } => {
+                if let Node::IdentExpr(name) = ident.as_ref() {
+                    let expr = self.jit_compile(expr);
+                    self.variables.insert(name.clone(), expr.unwrap());
                     return expr;
                 } else {
                     unimplemented!()
@@ -105,5 +114,10 @@ mod codegen {
     #[test]
     fn var_use() {
         assert_eq!(execute("let a = 10; a+3;"), 13.0)
+    }
+
+    #[test]
+    fn var_assign() {
+        assert_eq!(execute("let a = 10; a = 8-3; a+3;"), 8.0)
     }
 }
