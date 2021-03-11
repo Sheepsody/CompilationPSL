@@ -4,10 +4,14 @@
 
 // Reserved symbols
 
+WHITESPACE = _{ " " | "\t" | "\n" }         // Implicit whitespace
+COMMENT = _{ "/*" ~ (!"*/" ~ ANY)* ~ "*/" } // Implicit comment
+
 LET = _{ "let" }
 FUNC = _{ "fn" }
 IF = _{ "if" }
 THEN = _{ "then" }
+ELSE = _{ "else" }
 
 // Types
 
@@ -48,23 +52,19 @@ protoexpr = { "(" ~ (ident ~ ("," ~ ident)* )? ~ ")" }
 funcexpr = { FUNC ~ ident ~ protoexpr ~ blockexpr }
 callexpr = { ident ~ "(" ~ (expr ~ ("," ~ expr)* )? ~ ")" }
 
-ifexpr = { IF ~ term ~ THEN ~ blockexpr }
+condexpr = { IF ~ term ~ THEN ~ blockexpr ~ (ELSE ~ blockexpr)? }
 
 binaryexpr = { term ~ (operator ~ term)*}
 unaryexpr = { operator ~ term }
 
 term = _{ num | bool | "(" ~ expr ~ ")" | callexpr | ident } // Warning! ident at the end
-expr = _{ binaryexpr | unaryexpr | callexpr }
+expr = _{ binaryexpr | unaryexpr }
 
 // Ultimately no expr!
-line = _{ initexpr | assignexpr | blockexpr | funcexpr | ifexpr | expr }
+line = _{ initexpr | assignexpr | blockexpr | funcexpr | condexpr | expr }
 
 lines = _{ (line ~ ";")+ }
 program = _{ SOI ~ lines ~ EOI }
 
 blockexpr = { "{" ~ lines? ~ "}" }
 
-// Implicit whitespace & comment
-
-WHITESPACE = _{ " " | "\t" | "\n" }
-COMMENT = _{ "/*" ~ (!"*/" ~ ANY)* ~ "*/" }

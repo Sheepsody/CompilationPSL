@@ -110,13 +110,18 @@ fn parse_pair(pair: Pair<Rule>) -> Node {
                 args: pairs,
             }
         }
-        Rule::ifexpr => {
+        Rule::condexpr => {
             let mut pair = pair.into_inner();
             let cond = parse_pair(pair.next().unwrap());
-            let then = parse_pair(pair.next().unwrap());
-            Node::IfExpr {
+            let cons = parse_pair(pair.next().unwrap());
+            let alter = match pair.next() {
+                Some(p) => Option::Some(Box::new(parse_pair(p))),
+                None => None,
+            };
+            Node::CondExpr {
                 cond: Box::new(cond),
-                then: Box::new(then),
+                cons: Box::new(cons),
+                alter,
             }
         }
         _ => unreachable!(),
@@ -294,13 +299,26 @@ mod parsing {
     fn cond_if() {
         assert_eq!(
             parse_single("if true then {1+3;};"),
-            Node::IfExpr {
+            Node::CondExpr {
                 cond: Box::new(Node::BoolExpr(true)),
-                then: Box::new(Node::BlockExpr(vec![Node::BinaryExpr {
+                cons: Box::new(Node::BlockExpr(vec![Node::BinaryExpr {
                     lhs: Box::new(Node::NumberExpr(1.0)),
                     op: Op::Add,
                     rhs: Box::new(Node::NumberExpr(3.0)),
-                },]))
+                },])),
+                alter: Option::None,
+            }
+        )
+    }
+
+    #[test]
+    fn cond_if_else() {
+        assert_eq!(
+            parse_single("if true then {6;} else {4;};"),
+            Node::CondExpr {
+                cond: Box::new(Node::BoolExpr(true)),
+                cons: Box::new(Node::BlockExpr(vec![Node::NumberExpr(6.0),])),
+                alter: Some(Box::new(Node::BlockExpr(vec![Node::NumberExpr(4.0),]))),
             }
         )
     }

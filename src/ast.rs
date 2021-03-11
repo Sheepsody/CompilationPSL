@@ -33,9 +33,10 @@ pub enum Node {
         ident: Box<Node>,
         args: Vec<Node>,
     },
-    IfExpr {
+    CondExpr {
         cond: Box<Node>,
-        then: Box<Node>,
+        cons: Box<Node>,
+        alter: Option<Box<Node>>,
     },
 }
 
