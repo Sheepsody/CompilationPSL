@@ -6,32 +6,37 @@ use inkwell::context::Context;
 use inkwell::execution_engine::{ExecutionEngine, JitFunction};
 use inkwell::module::Module;
 use inkwell::passes::PassManager;
-use inkwell::types::BasicTypeEnum;
+use inkwell::types::{BasicTypeEnum, FloatType};
 use inkwell::values::{BasicValue, BasicValueEnum, FloatValue, FunctionValue, PointerValue};
 use inkwell::{FloatPredicate, OptimizationLevel};
 
-/// Defines the `Expr` compiler.
-pub struct CodeGen<'ctx> {
-    pub context: &'ctx Context,
-    pub builder: Builder<'ctx>,
-    pub module: Module<'ctx>,
-    pub execution_engine: ExecutionEngine<'ctx>,
+type JitFunc = unsafe extern "C" fn() -> f64;
+
+struct RecursiveBuilder<'ctx> {
+    f64_type: FloatType<'ctx>,
+    builder: &'ctx Builder<'ctx>,
     variables: HashMap<String, FloatValue<'ctx>>,
-    // variables: HashMap<String, PointerValue<'ctx>>,
-    // fn_value_opt: Option<FunctionValue<'ctx>>,
 }
 
-impl<'ctx> CodeGen<'ctx> {
-    pub fn jit_compile(&mut self, node: &Node) -> Result<FloatValue<'ctx>, &'static str> {
+impl<'ctx> RecursiveBuilder<'ctx> {
+    pub fn new(f64_type: FloatType<'ctx>, builder: &'ctx Builder) -> Self {
+        Self {
+            f64_type,
+            builder,
+            variables: HashMap::new(),
+        }
+    }
+
+    pub fn build(&mut self, node: &Node) -> Result<FloatValue<'ctx>, &'static str> {
         match node {
-            Node::NumberExpr(nb) => Ok(self.context.f64_type().const_float(*nb)),
+            Node::NumberExpr(nb) => Ok(self.f64_type.const_float(*nb)),
             Node::IdentExpr(name) => match self.variables.get(name.as_str()) {
                 Some(value) => Ok(*value),
                 None => Err("Could not find a matching variable."),
             },
             Node::BinaryExpr { op, lhs, rhs } => {
-                let lhs = self.jit_compile(lhs).unwrap();
-                let rhs = self.jit_compile(rhs).unwrap();
+                let lhs = self.build(lhs).unwrap();
+                let rhs = self.build(rhs).unwrap();
                 match op {
                     Op::Add => Ok(self.builder.build_float_add(lhs, rhs, "tmpadd")),
                     Op::Sub => Ok(self.builder.build_float_sub(lhs, rhs, "tmpsub")),
@@ -41,7 +46,7 @@ impl<'ctx> CodeGen<'ctx> {
             }
             Node::InitExpr { ident, expr } => {
                 if let Node::IdentExpr(name) = ident.as_ref() {
-                    let expr = self.jit_compile(expr);
+                    let expr = self.build(expr);
                     self.variables.insert(name.clone(), expr.unwrap());
                     return expr;
                 } else {
@@ -50,7 +55,7 @@ impl<'ctx> CodeGen<'ctx> {
             }
             Node::AssignExpr { ident, expr } => {
                 if let Node::IdentExpr(name) = ident.as_ref() {
-                    let expr = self.jit_compile(expr);
+                    let expr = self.build(expr);
                     self.variables.insert(name.clone(), expr.unwrap());
                     return expr;
                 } else {
@@ -66,32 +71,33 @@ pub fn execute(string: &str) -> f64 {
     use super::parser::parse;
 
     let context = Context::create();
-    let module = context.create_module("sum");
+    let module = context.create_module("GenKo");
+    let builder = context.create_builder();
+
     let execution_engine = module
         .create_jit_execution_engine(OptimizationLevel::None)
         .unwrap();
-    let mut codegen = CodeGen {
-        context: &context,
-        module,
-        builder: context.create_builder(),
-        execution_engine,
-        variables: HashMap::new(),
-    };
 
-    let mut result = 0.0;
-    for line in parse(string) {
-        result = codegen
-            .jit_compile(&line)
-            .ok()
-            .unwrap()
-            .get_constant()
-            .unwrap()
-            .0
+    let i64_type = context.f64_type();
+    let fn_type = i64_type.fn_type(&[], false);
+    let function = module.add_function("jit", fn_type, None);
+
+    let basic_block = context.append_basic_block(function, "entry");
+    builder.position_at_end(basic_block);
+
+    let mut result: Result<FloatValue, &str> = Result::Err("No return specified");
+
+    let mut recursive_builder = RecursiveBuilder::new(i64_type, &builder);
+    for node in parse(string) {
+        result = recursive_builder.build(&node);
     }
+    builder.build_return(Some(&result.ok().unwrap()));
 
-    result
+    unsafe {
+        let jit_function: JitFunction<JitFunc> = execution_engine.get_function("jit").unwrap();
+        jit_function.call()
+    }
 }
-
 #[cfg(test)]
 mod codegen {
     use super::execute;
@@ -108,7 +114,7 @@ mod codegen {
 
     #[test]
     fn var_init() {
-        assert_eq!(execute("let a = 2+2;"), 4.0)
+        assert_eq!(execute("let a = 2+2;a;"), 4.0)
     }
 
     #[test]

@@ -23,10 +23,9 @@ pub enum Node {
         ident: Box<Node>,
         expr: Box<Node>,
     },
-    ProtoExpr(Vec<String>),
     FuncExpr {
         ident: Box<Node>,
-        proto: Box<Node>,
+        args: Vec<String>,
         body: Box<Node>,
     },
     CallExpr {

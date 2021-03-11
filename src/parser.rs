@@ -75,25 +75,22 @@ fn parse_pair(pair: Pair<Rule>) -> Node {
                 .map(|p| parse_pairs(p.into_inner()))
                 .collect(),
         ),
-        Rule::protoexpr => Node::ProtoExpr(vec![]),
         Rule::funcexpr => {
             let mut pair = pair.into_inner();
             let ident = String::from(pair.next().unwrap().as_str());
             let proto = pair.next().unwrap();
-            let protonode = Node::ProtoExpr(
-                proto
-                    .into_inner()
-                    .into_iter()
-                    .map(|p| String::from(p.as_str()))
-                    .collect(),
-            );
+            let args_list = proto
+                .into_inner()
+                .into_iter()
+                .map(|p| String::from(p.as_str()))
+                .collect();
             let mut blocknode = Node::BlockExpr(vec![]);
             if !pair.as_str().is_empty() {
                 blocknode = parse_pairs(pair);
             };
             Node::FuncExpr {
                 ident: Box::new(Node::IdentExpr(ident)),
-                proto: Box::new(protonode),
+                args: args_list,
                 body: Box::new(blocknode),
             }
         }
@@ -234,7 +231,7 @@ mod parsing {
             parse_single("fn cat() { };"),
             Node::FuncExpr {
                 ident: Box::new(Node::IdentExpr(String::from("cat"))),
-                proto: Box::new(Node::ProtoExpr(vec![])),
+                args: vec![],
                 body: Box::new(Node::BlockExpr(vec![])),
             }
         )
@@ -246,7 +243,7 @@ mod parsing {
             parse_single("fn cat(a, b) {6; 7;};"),
             Node::FuncExpr {
                 ident: Box::new(Node::IdentExpr(String::from("cat"))),
-                proto: Box::new(Node::ProtoExpr(vec![String::from("a"), String::from("b")])),
+                args: vec![String::from("a"), String::from("b")],
                 body: Box::new(Node::BlockExpr(vec![
                     Node::NumberExpr(6.0),
                     Node::NumberExpr(7.0)
