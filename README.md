@@ -1,23 +1,36 @@
-# 言語 : Calculatrice
+# 言語
 
-## Fonctionnalités (voir les tests si nécéssaire)
-
-- Opérations (-, +, \*, /, ^)
-- Comparaisons (==, >, <, >=, <=)
-- Logique (&&, ||)
-- Déclaration et utilisation de variables (`x := 1`)
-- Constantes (PI) et fonctions math (cos)
-- Booléen (true, false)
-- Chaînage (`x := 1; 1+2`)
-- Inversion unaire
-
-## Utilisation
+## Syntaxe d'un programme
 
 ```shell
-# Lancer la calculatrice
-cargo run
-# Quitter
->>> close
-# Tests
-cargo test
+# Variables
+let a = 3;
+let b = 3;
+a = b = 1;
+
+# Function
+fn (a, b) {
+    let a = 5;
+    5 # Retour implicite sans ;
+}
+
+# If-Else condition
+if (cond) {
+    ... ;
+    ... ;
+} else {
+    ... ;
+    ... ;
+}
+
+5 # Retour implicite sans ;
 ```
+
+# TODO
+
+- [ ] While
+- [ ] Booléen
+- [ ] Not, et, ou
+- [ ] Variables globales
+- [ ] Fonction/If sans/avec retour avec Blockexpr
+- [ ] Fonctions nestées

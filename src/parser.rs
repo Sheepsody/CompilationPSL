@@ -71,28 +71,24 @@ fn parse_pair(pair: Pair<Rule>) -> Node {
         Rule::blockexpr => Node::BlockExpr(
             pair.into_inner()
                 .into_iter()
-                // .filter(|p| !p.as_str().is_empty())
-                .map(|p| parse_pairs(p.into_inner()))
+                .map(|p| parse_pair(p))
                 .collect(),
         ),
         Rule::funcexpr => {
             let mut pair = pair.into_inner();
-            let ident = String::from(pair.next().unwrap().as_str());
+            let ident = Box::new(Node::IdentExpr(String::from(pair.next().unwrap().as_str())));
             let proto = pair.next().unwrap();
-            let args_list = proto
+            let args = proto
                 .into_inner()
                 .into_iter()
                 .map(|p| String::from(p.as_str()))
                 .collect();
-            let mut blocknode = Node::BlockExpr(vec![]);
-            if !pair.as_str().is_empty() {
-                blocknode = parse_pairs(pair);
-            };
-            Node::FuncExpr {
-                ident: Box::new(Node::IdentExpr(ident)),
-                args: args_list,
-                body: Box::new(blocknode),
+            let mut body = Vec::new();
+            for p in pair {
+                body.push(parse_pair(p));
             }
+            let body = Box::new(Node::BlockExpr(body));
+            Node::FuncExpr { ident, args, body }
         }
         Rule::callexpr => {
             let mut pairs: Vec<Node> = pair
@@ -171,25 +167,12 @@ mod parsing {
 
     #[test]
     fn number() {
-        assert_eq!(parse_single("1;"), Node::NumberExpr(1.0));
+        assert_eq!(parse_single("1"), Node::NumberExpr(1.0));
     }
-
-    #[test]
-    fn block() {
-        assert_eq!(
-            parse_single("{1; 2; 3;};"),
-            Node::BlockExpr(vec![
-                Node::NumberExpr(1.0),
-                Node::NumberExpr(2.0),
-                Node::NumberExpr(3.0)
-            ])
-        );
-    }
-
     #[test]
     fn binary() {
         assert_eq!(
-            parse_single("1+2;"),
+            parse_single("1+2"),
             Node::BinaryExpr {
                 op: Op::Add,
                 lhs: Box::new(Node::NumberExpr(1.0)),
@@ -197,16 +180,15 @@ mod parsing {
             }
         )
     }
-
     #[test]
     fn identifier() {
-        assert_eq!(parse_single("x;"), Node::IdentExpr(String::from("x")))
+        assert_eq!(parse_single("x"), Node::IdentExpr(String::from("x")))
     }
 
     #[test]
     fn initialisation() {
         assert_eq!(
-            parse_single("let a = 1;"),
+            parse_single("let a = 1; a"),
             Node::InitExpr {
                 ident: Box::new(Node::IdentExpr(String::from("a"))),
                 expr: Box::new(Node::NumberExpr(1.0))
@@ -217,7 +199,7 @@ mod parsing {
     #[test]
     fn assignement() {
         assert_eq!(
-            parse_single("a = 1;"),
+            parse_single("a = 1; a"),
             Node::AssignExpr {
                 ident: Box::new(Node::IdentExpr(String::from("a"))),
                 expr: Box::new(Node::NumberExpr(1.0))
@@ -226,9 +208,20 @@ mod parsing {
     }
 
     #[test]
+    fn block() {
+        assert_eq!(
+            parse_single("{a = 1;} 1"),
+            Node::BlockExpr(vec![Node::AssignExpr {
+                ident: Box::new(Node::IdentExpr(String::from("a"))),
+                expr: Box::new(Node::NumberExpr(1.0))
+            }])
+        );
+    }
+
+    #[test]
     fn assignement_chaining() {
         assert_eq!(
-            parse_single("b = a = 1;"),
+            parse_single("b = a = 1"),
             Node::AssignExpr {
                 ident: Box::new(Node::IdentExpr(String::from("b"))),
                 expr: Box::new(Node::AssignExpr {
@@ -242,11 +235,11 @@ mod parsing {
     #[test]
     fn func_declaration_empty() {
         assert_eq!(
-            parse_single("fn cat() { };"),
+            parse_single("fn cat() { 1 } 1"),
             Node::FuncExpr {
                 ident: Box::new(Node::IdentExpr(String::from("cat"))),
                 args: vec![],
-                body: Box::new(Node::BlockExpr(vec![])),
+                body: Box::new(Node::BlockExpr(vec![Node::NumberExpr(1.0)],))
             }
         )
     }
@@ -254,14 +247,15 @@ mod parsing {
     #[test]
     fn func_declaration() {
         assert_eq!(
-            parse_single("fn cat(a, b) {6; 7;};"),
+            parse_single("fn cat(a, b) { 6+4 } 6"),
             Node::FuncExpr {
                 ident: Box::new(Node::IdentExpr(String::from("cat"))),
                 args: vec![String::from("a"), String::from("b")],
-                body: Box::new(Node::BlockExpr(vec![
-                    Node::NumberExpr(6.0),
-                    Node::NumberExpr(7.0)
-                ])),
+                body: Box::new(Node::BlockExpr(vec![Node::BinaryExpr {
+                    op: Op::Add,
+                    lhs: Box::new(Node::NumberExpr(6.0)),
+                    rhs: Box::new(Node::NumberExpr(4.0))
+                }])),
             }
         )
     }
@@ -269,7 +263,7 @@ mod parsing {
     #[test]
     fn call_empty() {
         assert_eq!(
-            parse_single("ze();"),
+            parse_single("ze()"),
             Node::CallExpr {
                 ident: Box::new(Node::IdentExpr(String::from("ze"))),
                 args: vec![]
@@ -280,7 +274,7 @@ mod parsing {
     #[test]
     fn call() {
         assert_eq!(
-            parse_single("yz(1+3, cd);"),
+            parse_single("yz(1+3, cd)"),
             Node::CallExpr {
                 ident: Box::new(Node::IdentExpr(String::from("yz"))),
                 args: vec![
@@ -297,24 +291,23 @@ mod parsing {
 
     #[test]
     fn bool_false() {
-        assert_eq!(parse_single("false;"), Node::BoolExpr(false),)
+        assert_eq!(parse_single("false"), Node::BoolExpr(false),)
     }
 
     #[test]
     fn bool_true() {
-        assert_eq!(parse_single("true;"), Node::BoolExpr(true),)
+        assert_eq!(parse_single("true"), Node::BoolExpr(true),)
     }
 
     #[test]
     fn cond_if() {
         assert_eq!(
-            parse_single("if true then {1+3;};"),
+            parse_single("if true then {let a = 1;} c"),
             Node::CondExpr {
                 cond: Box::new(Node::BoolExpr(true)),
-                cons: Box::new(Node::BlockExpr(vec![Node::BinaryExpr {
-                    lhs: Box::new(Node::NumberExpr(1.0)),
-                    op: Op::Add,
-                    rhs: Box::new(Node::NumberExpr(3.0)),
+                cons: Box::new(Node::BlockExpr(vec![Node::InitExpr {
+                    ident: Box::new(Node::IdentExpr(String::from("a"))),
+                    expr: Box::new(Node::NumberExpr(1.0))
                 },])),
                 alter: Option::None,
             }
@@ -324,11 +317,17 @@ mod parsing {
     #[test]
     fn cond_if_else() {
         assert_eq!(
-            parse_single("if true then {6;} else {4;};"),
+            parse_single("if true then {let a = 1;} else {let b = 2;} c"),
             Node::CondExpr {
                 cond: Box::new(Node::BoolExpr(true)),
-                cons: Box::new(Node::BlockExpr(vec![Node::NumberExpr(6.0),])),
-                alter: Some(Box::new(Node::BlockExpr(vec![Node::NumberExpr(4.0),]))),
+                cons: Box::new(Node::BlockExpr(vec![Node::InitExpr {
+                    ident: Box::new(Node::IdentExpr(String::from("a"))),
+                    expr: Box::new(Node::NumberExpr(1.0))
+                },])),
+                alter: Some(Box::new(Node::BlockExpr(vec![Node::InitExpr {
+                    ident: Box::new(Node::IdentExpr(String::from("b"))),
+                    expr: Box::new(Node::NumberExpr(2.0))
+                },]))),
             }
         )
     }

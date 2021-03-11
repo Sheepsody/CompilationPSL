@@ -45,26 +45,30 @@ ident = @{ ASCII_ALPHA+ }
 // Parsing //
 /////////////
 
-initexpr = { LET ~ ident ~ "=" ~ expr }
+// Expressions avec retour
 
-protoexpr = { "(" ~ (ident ~ ("," ~ ident)* )? ~ ")" }
-funcexpr = { FUNC ~ ident ~ protoexpr ~ blockexpr }
 callexpr = { ident ~ "(" ~ (expr ~ ("," ~ expr)* )? ~ ")" }
-
-condexpr = { IF ~ term ~ THEN ~ blockexpr ~ (ELSE ~ blockexpr)? }
 
 assignexpr = { ident ~ "=" ~ expr }
 binaryexpr = { term ~ (operator ~ term)*}
 unaryexpr = { operator ~ term }
 
 term = _{ num | bool | "(" ~ expr ~ ")" | callexpr | ident } // Warning! ident at the end
-expr = _{ assignexpr | binaryexpr | unaryexpr}
+expr = _{ assignexpr | binaryexpr | unaryexpr }
 
-// Ultimately no expr!
-line = _{ initexpr | assignexpr | blockexpr | funcexpr | condexpr | expr }
+// Autres
 
-lines = _{ (line ~ ";")+ }
-program = _{ SOI ~ lines ~ EOI }
+initexpr = { LET ~ ident ~ "=" ~ expr ~ ";" }
 
-blockexpr = { "{" ~ lines? ~ "}" }
+protoexpr = { "(" ~ (ident ~ ("," ~ ident)* )? ~ ")" }
+funcexpr = { FUNC ~ ident ~ protoexpr ~ "{" ~ line* ~ expr ~ "}" }
 
+condexpr = { IF ~ term ~ THEN ~ blockexpr ~ (ELSE ~ blockexpr)? }
+
+line = _{ initexpr | (assignexpr ~ ";") | blockexpr | funcexpr | condexpr }
+
+// Programme
+
+program = _{ SOI ~ line* ~ expr ~ EOI }
+
+blockexpr = { "{" ~ line* ~ "}" }

@@ -5,12 +5,13 @@
 use super::ast::{Node, Op};
 use std::collections::HashMap;
 
+use inkwell::basic_block::BasicBlock;
 use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::execution_engine::{ExecutionEngine, JitFunction};
 use inkwell::module::Module;
 use inkwell::passes::PassManager;
-use inkwell::types::{BasicTypeEnum, FloatType};
+use inkwell::types::{BasicTypeEnum, FloatType, FunctionType};
 use inkwell::values::{BasicValue, BasicValueEnum, FloatValue, FunctionValue, PointerValue};
 use inkwell::{FloatPredicate, OptimizationLevel};
 
@@ -21,8 +22,11 @@ struct RecursiveBuilder<'a, 'ctx> {
     builder: &'a Builder<'ctx>,
     module: &'a Module<'ctx>,
     context: &'ctx Context,
-    pub variables: HashMap<String, PointerValue<'ctx>>,
     fn_value: &'a FunctionValue<'ctx>,
+
+    pub variables: HashMap<String, PointerValue<'ctx>>,
+    pub functions: HashMap<String, FunctionValue<'ctx>>,
+    pub current_block: &'a BasicBlock<'ctx>,
 }
 
 impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
@@ -32,6 +36,7 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
         module: &'a Module<'ctx>,
         builder: &'a Builder<'ctx>,
         fn_value: &'a FunctionValue<'ctx>,
+        current_block: &'a BasicBlock<'ctx>,
     ) -> Self {
         Self {
             f64_type,
@@ -39,7 +44,9 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
             module,
             context,
             variables: HashMap::new(),
+            functions: HashMap::new(),
             fn_value,
+            current_block,
         }
     }
 
@@ -55,22 +62,23 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
         builder.build_alloca(self.context.f64_type(), name)
     }
 
-    pub fn build(&mut self, node: &Node) -> Result<FloatValue<'ctx>, &'static str> {
+    pub fn build(&mut self, node: &Node) -> Option<FloatValue<'ctx>> {
         match node {
-            Node::NumberExpr(nb) => Ok(self.f64_type.const_float(*nb)),
+            Node::NumberExpr(nb) => Some(self.f64_type.const_float(*nb)),
             Node::IdentExpr(name) => match self.variables.get(name.as_str()) {
-                Some(var) => Ok(self
-                    .builder
-                    .build_load(*var, name.as_str())
-                    .into_float_value()),
-                None => Err("Could not find a matching variable."),
+                Some(var) => Some(
+                    self.builder
+                        .build_load(*var, name.as_str())
+                        .into_float_value(),
+                ),
+                None => unreachable!("Could not find a matching variable."),
             },
             Node::BinaryExpr { op, lhs, rhs } => {
                 let lhs = self.build(lhs).unwrap();
                 let rhs = self.build(rhs).unwrap();
                 match op {
-                    Op::Add => Ok(self.builder.build_float_add(lhs, rhs, "tmpadd")),
-                    Op::Sub => Ok(self.builder.build_float_sub(lhs, rhs, "tmpsub")),
+                    Op::Add => Some(self.builder.build_float_add(lhs, rhs, "tmpadd")),
+                    Op::Sub => Some(self.builder.build_float_sub(lhs, rhs, "tmpsub")),
                     // TODO: Add other ops
                     _ => unimplemented!(),
                 }
@@ -80,7 +88,7 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
                     let expr = self.build(expr);
                     let alloca = self.create_entry_block_alloca(name);
 
-                    self.builder.build_store(alloca, expr.ok().unwrap());
+                    self.builder.build_store(alloca, expr.unwrap());
 
                     self.variables.insert(name.to_string(), alloca);
                     return expr;
@@ -97,7 +105,7 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
                         .ok_or("Undefined variable.")
                         .unwrap();
                     self.builder.build_store(*var, nval);
-                    Ok(nval)
+                    Some(nval)
                 } else {
                     unimplemented!()
                 }
@@ -149,17 +157,65 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
 
                 phi.add_incoming(&[(&then_val, then_bb), (&else_val, else_bb)]);
 
-                Ok(phi.as_basic_value().into_float_value())
+                Some(phi.as_basic_value().into_float_value())
             }
 
             Node::BlockExpr(nodes) => {
-                let mut result: Result<FloatValue, &str> = Result::Err("No return specified");
+                let mut result: Option<FloatValue> = None;
                 for node in nodes {
                     result = self.build(node);
                 }
                 result
             }
 
+            Node::FuncExpr { ident, args, body } => {
+                if let Node::IdentExpr(name) = ident.as_ref() {
+                    self.builder.get_current_debug_location();
+
+                    let last = self.builder.get_insert_block();
+
+                    // Compiling the prototype
+                    let args_types = std::iter::repeat(self.f64_type)
+                        .take(args.len())
+                        .map(|f| f.into())
+                        .collect::<Vec<BasicTypeEnum>>();
+
+                    let args_types = args_types.as_slice();
+                    let fn_type = self.f64_type.fn_type(args_types, false);
+
+                    let function = self.module.add_function(name, fn_type, None);
+                    self.functions.insert(name.to_string(), function);
+
+                    for (i, arg) in function.get_param_iter().enumerate() {
+                        arg.into_float_value().set_name(args[i].as_str());
+                    }
+
+                    // Add function block
+                    let entry = self.context.append_basic_block(function, "entry");
+                    self.builder.position_at_end(entry);
+
+                    // Build variable map
+                    for (i, arg) in function.get_param_iter().enumerate() {
+                        let arg_name = args[i].as_str();
+                        let alloca = self.create_entry_block_alloca(arg_name);
+                        self.builder.build_store(alloca, arg);
+                        self.variables.insert(args[i].clone(), alloca);
+                    }
+                    // Compile Body
+                    let body = self.build(body).unwrap();
+
+                    // Return
+                    let ret = self.builder.build_return(Some(&body));
+
+                    if !function.verify(true) {
+                        unimplemented!("Error building function");
+                    }
+
+                    Some(self.f64_type.const_float(0.0))
+                } else {
+                    unimplemented!()
+                }
+            }
             _ => unimplemented!("{:?}", node),
         }
     }
@@ -180,21 +236,28 @@ pub fn execute(string: &str) -> f64 {
     let fn_type = f64_type.fn_type(&[], false);
     let function = module.add_function("jit", fn_type, None);
 
-    let basic_block = context.append_basic_block(function, "entry");
-    builder.position_at_end(basic_block);
+    let mut current_block = context.append_basic_block(function, "entry");
 
-    let mut result: Result<FloatValue, &str> = Result::Err("No return specified");
+    let mut result: Option<FloatValue> = None;
 
-    let mut recursive_builder =
-        RecursiveBuilder::new(f64_type, &context, &module, &builder, &function);
+    let mut recursive_builder = RecursiveBuilder::new(
+        f64_type,
+        &context,
+        &module,
+        &builder,
+        &function,
+        &current_block,
+    );
+
     for node in parse(string) {
         result = recursive_builder.build(&node);
+        println!("{:?}", builder.get_insert_block());
     }
-    builder.build_return(Some(&result.ok().unwrap()));
+
+    builder.build_return(Some(&result.unwrap()));
 
     module.print_to_stderr();
 
-    // println!("{:?}", function.print_to_stderr());
     unsafe {
         let jit_function: JitFunction<JitFunc> = execution_engine.get_function("jit").unwrap();
         jit_function.call()
@@ -207,41 +270,29 @@ mod codegen {
 
     #[test]
     fn float() {
-        assert_eq!(execute("1;"), 1.0)
+        assert_eq!(execute("1"), 1.0)
     }
 
     #[test]
     fn add() {
-        assert_eq!(execute("1+2;"), 3.0)
+        assert_eq!(execute("1+2"), 3.0)
     }
 
     #[test]
-    fn var_init() {
-        assert_eq!(execute("let a = 2+2;a;"), 4.0)
+    fn variables() {
+        assert_eq!(execute("let a = 2+2; a"), 4.0)
     }
 
     #[test]
-    fn var_use() {
-        assert_eq!(execute("let a = 10; a+3;"), 13.0)
-    }
-
-    #[test]
-    fn var_assign() {
-        assert_eq!(execute("let a = 10; a = 8-3; a+3;"), 8.0)
+    fn fn_decl() {
+        assert_eq!(execute("fn test() {1} 10"), 10.0)
     }
 
     #[test]
     fn cond_true() {
-        assert_eq!(execute("if (1) then {1+3;} else {1;};"), 4.0)
+        assert_eq!(
+            execute("let a=1; if (1) then {a = 3;} else {a = 4;} a"),
+            3.0
+        )
     }
-
-    #[test]
-    fn cond_false() {
-        assert_eq!(execute("if (0) then {1+3;} else {1;};"), 1.0)
-    }
-
-    //    #[test]
-    //    fn fn_decl() {
-    //        assert_eq!(execute("fn test() {1;};"), 0.0)
-    //    }
 }
