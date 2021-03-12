@@ -25,8 +25,7 @@ struct RecursiveBuilder<'a, 'ctx> {
     fn_value: &'a FunctionValue<'ctx>,
 
     pub variables: HashMap<String, PointerValue<'ctx>>,
-    pub functions: HashMap<String, FunctionValue<'ctx>>,
-    pub current_block: &'a BasicBlock<'ctx>,
+    pub current_block: BasicBlock<'ctx>,
 }
 
 impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
@@ -36,7 +35,7 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
         module: &'a Module<'ctx>,
         builder: &'a Builder<'ctx>,
         fn_value: &'a FunctionValue<'ctx>,
-        current_block: &'a BasicBlock<'ctx>,
+        current_block: BasicBlock<'ctx>,
     ) -> Self {
         Self {
             f64_type,
@@ -44,10 +43,14 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
             module,
             context,
             variables: HashMap::new(),
-            functions: HashMap::new(),
             fn_value,
             current_block,
         }
+    }
+
+    #[inline]
+    fn get_function(&self, name: &str) -> Option<FunctionValue<'ctx>> {
+        self.module.get_function(name)
     }
 
     fn create_entry_block_alloca(&self, name: &str) -> PointerValue<'ctx> {
@@ -157,6 +160,8 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
 
                 phi.add_incoming(&[(&then_val, then_bb), (&else_val, else_bb)]);
 
+                self.current_block = cont_bb;
+
                 Some(phi.as_basic_value().into_float_value())
             }
 
@@ -170,8 +175,6 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
 
             Node::FuncExpr { ident, args, body } => {
                 if let Node::IdentExpr(name) = ident.as_ref() {
-                    self.builder.get_current_debug_location();
-
                     let last = self.builder.get_insert_block();
 
                     // Compiling the prototype
@@ -184,7 +187,6 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
                     let fn_type = self.f64_type.fn_type(args_types, false);
 
                     let function = self.module.add_function(name, fn_type, None);
-                    self.functions.insert(name.to_string(), function);
 
                     for (i, arg) in function.get_param_iter().enumerate() {
                         arg.into_float_value().set_name(args[i].as_str());
@@ -195,6 +197,7 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
                     self.builder.position_at_end(entry);
 
                     // Build variable map
+                    self.variables.reserve(args.len());
                     for (i, arg) in function.get_param_iter().enumerate() {
                         let arg_name = args[i].as_str();
                         let alloca = self.create_entry_block_alloca(arg_name);
@@ -207,17 +210,52 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
                     // Return
                     let ret = self.builder.build_return(Some(&body));
 
-                    if !function.verify(true) {
-                        unimplemented!("Error building function");
-                    }
-
                     Some(self.f64_type.const_float(0.0))
                 } else {
                     unimplemented!()
                 }
             }
+
+            Node::CallExpr { ident, args } => {
+                println!("Got here");
+                if let Node::IdentExpr(name) = ident.as_ref() {
+                    match self.get_function(name) {
+                        Some(fun) => {
+                            let mut compiled_args = Vec::with_capacity(args.len());
+
+                            for arg in args {
+                                compiled_args.push(self.build(arg)?);
+                            }
+
+                            let argsv: Vec<BasicValueEnum> = compiled_args
+                                .iter()
+                                .by_ref()
+                                .map(|&val| val.into())
+                                .collect();
+
+                            match self
+                                .builder
+                                .build_call(fun, argsv.as_slice(), "tmp")
+                                .try_as_basic_value()
+                                .left()
+                            {
+                                Some(value) => Some(value.into_float_value()),
+                                None => unreachable!("Invalid call produced."),
+                            }
+                        }
+                        None => unreachable!("Unknown function."),
+                    }
+                } else {
+                    unimplemented!();
+                }
+            }
+
             _ => unimplemented!("{:?}", node),
         }
+    }
+
+    fn reposition(&mut self) {
+        self.builder.position_at_end(self.current_block);
     }
 }
 
@@ -246,17 +284,17 @@ pub fn execute(string: &str) -> f64 {
         &module,
         &builder,
         &function,
-        &current_block,
+        current_block,
     );
 
     for node in parse(string) {
+        recursive_builder.reposition();
         result = recursive_builder.build(&node);
-        println!("{:?}", builder.get_insert_block());
     }
 
     builder.build_return(Some(&result.unwrap()));
 
-    module.print_to_stderr();
+    // module.print_to_stderr();
 
     unsafe {
         let jit_function: JitFunction<JitFunc> = execution_engine.get_function("jit").unwrap();
@@ -289,10 +327,22 @@ mod codegen {
     }
 
     #[test]
+    fn fn_args() {
+        assert_eq!(execute("fn test(a) {10+a} test(5)"), 15.0)
+    }
+
+    #[test]
     fn cond_true() {
         assert_eq!(
             execute("let a=1; if (1) then {a = 3;} else {a = 4;} a"),
             3.0
+        )
+    }
+
+    fn recursive() {
+        assert_eq!(
+            execute("fn test(a) { let b=0; if a then {b=test(a-1);} else {b=a;} b} test(10)"),
+            0.0
         )
     }
 }

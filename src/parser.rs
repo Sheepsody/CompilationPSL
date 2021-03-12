@@ -96,11 +96,8 @@ fn parse_pair(pair: Pair<Rule>) -> Node {
                 .into_iter()
                 .map(|e| parse_pair(e))
                 .collect();
-            let ident = pairs.remove(0);
-            Node::CallExpr {
-                ident: Box::new(ident),
-                args: pairs,
-            }
+            let ident = Box::new(pairs.remove(0));
+            Node::CallExpr { ident, args: pairs }
         }
         Rule::condexpr => {
             let mut pair = pair.into_inner();
