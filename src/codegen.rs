@@ -86,8 +86,81 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
                 match op {
                     Op::Add => Some(self.builder.build_float_add(lhs, rhs, "tmpadd")),
                     Op::Sub => Some(self.builder.build_float_sub(lhs, rhs, "tmpsub")),
-                    // TODO: Add other ops
-                    _ => unimplemented!(),
+                    Op::Mul => Some(self.builder.build_float_mul(lhs, rhs, "tmpmul")),
+                    Op::Div => Some(self.builder.build_float_div(lhs, rhs, "tmpdiv")),
+                    Op::Pow => unimplemented!(),
+                    Op::Eq => Some({
+                        let cmp = self.builder.build_float_compare(
+                            FloatPredicate::UEQ,
+                            lhs,
+                            rhs,
+                            "tmpeq",
+                        );
+
+                        self.builder.build_unsigned_int_to_float(
+                            cmp,
+                            self.context.f64_type(),
+                            "tmpbool",
+                        )
+                    }),
+                    Op::Lt => Some({
+                        let cmp = self.builder.build_float_compare(
+                            FloatPredicate::ULT,
+                            lhs,
+                            rhs,
+                            "tmplt",
+                        );
+
+                        self.builder.build_unsigned_int_to_float(
+                            cmp,
+                            self.context.f64_type(),
+                            "tmpbool",
+                        )
+                    }),
+                    Op::Gt => Some({
+                        let cmp = self.builder.build_float_compare(
+                            FloatPredicate::UGT,
+                            lhs,
+                            rhs,
+                            "tmpgt",
+                        );
+
+                        self.builder.build_unsigned_int_to_float(
+                            cmp,
+                            self.context.f64_type(),
+                            "tmpbool",
+                        )
+                    }),
+                    Op::Ge => Some({
+                        let cmp = self.builder.build_float_compare(
+                            FloatPredicate::UGE,
+                            lhs,
+                            rhs,
+                            "tmpge",
+                        );
+
+                        self.builder.build_unsigned_int_to_float(
+                            cmp,
+                            self.context.f64_type(),
+                            "tmpbool",
+                        )
+                    }),
+                    Op::Le => Some({
+                        let cmp = self.builder.build_float_compare(
+                            FloatPredicate::ULE,
+                            lhs,
+                            rhs,
+                            "tmple",
+                        );
+
+                        self.builder.build_unsigned_int_to_float(
+                            cmp,
+                            self.context.f64_type(),
+                            "tmpbool",
+                        )
+                    }),
+                    Op::And => unimplemented!(),
+                    Op::Or => unimplemented!(),
                 }
             }
             Node::InitExpr { ident, expr } => {
@@ -180,7 +253,7 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
 
             Node::FuncExpr { ident, args, body } => {
                 if let Node::IdentExpr(name) = ident.as_ref() {
-                    let last = self.builder.get_insert_block();
+                    self.builder.get_insert_block();
 
                     // Compiling the prototype
                     let args_types = std::iter::repeat(self.f64_type)
@@ -216,7 +289,7 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
                     let body = self.build(body).unwrap();
 
                     // Return
-                    let ret = self.builder.build_return(Some(&body));
+                    self.builder.build_return(Some(&body));
 
                     self.fn_value.pop();
                     self.current_block.pop();
@@ -285,7 +358,7 @@ pub fn execute(string: &str) -> f64 {
     let fn_type = f64_type.fn_type(&[], false);
     let function = module.add_function("jit", fn_type, None);
 
-    let mut current_block = context.append_basic_block(function, "entry");
+    let current_block = context.append_basic_block(function, "entry");
 
     let mut result: Option<FloatValue> = None;
 
@@ -305,7 +378,7 @@ pub fn execute(string: &str) -> f64 {
 
     builder.build_return(Some(&result.unwrap()));
 
-    module.print_to_stderr();
+    // module.print_to_stderr();
 
     unsafe {
         let jit_function: JitFunction<JitFunc> = execution_engine.get_function("jit").unwrap();
@@ -328,6 +401,16 @@ mod codegen {
     }
 
     #[test]
+    fn cmp_lt() {
+        assert_eq!(execute("2 < 1"), 0.0)
+    }
+
+    #[test]
+    fn cmp_ge() {
+        assert_eq!(execute("1 >= 1"), 1.0)
+    }
+
+    #[test]
     fn variables() {
         assert_eq!(execute("let a = 2+2; a"), 4.0)
     }
@@ -343,16 +426,16 @@ mod codegen {
     }
 
     #[test]
-    fn if_then_else_cond() {
-        assert_eq!(
-            execute("let a=1; if (1) then {a = 3;} else {a = 4;} a"),
-            3.0
-        )
+    fn if_then_cond() {
+        assert_eq!(execute("let a=1; if (1 == 1) then {a = 3;} a"), 3.0)
     }
 
     #[test]
-    fn if_then_cond() {
-        assert_eq!(execute("let a=1; if (1) then {a = 3;} a"), 3.0)
+    fn if_then_else_cond() {
+        assert_eq!(
+            execute("let a=1; if (0 == 1) then {a = 3;} else {a=2;} a"),
+            2.0
+        )
     }
 
     #[test]
