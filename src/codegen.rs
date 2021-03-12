@@ -8,10 +8,9 @@ use std::collections::HashMap;
 use inkwell::basic_block::BasicBlock;
 use inkwell::builder::Builder;
 use inkwell::context::Context;
-use inkwell::execution_engine::{ExecutionEngine, JitFunction};
+use inkwell::execution_engine::JitFunction;
 use inkwell::module::Module;
-use inkwell::passes::PassManager;
-use inkwell::types::{BasicTypeEnum, FloatType, FunctionType};
+use inkwell::types::{BasicTypeEnum, FloatType};
 use inkwell::values::{BasicValue, BasicValueEnum, FloatValue, FunctionValue, PointerValue};
 use inkwell::{FloatPredicate, OptimizationLevel};
 
@@ -22,10 +21,10 @@ struct RecursiveBuilder<'a, 'ctx> {
     builder: &'a Builder<'ctx>,
     module: &'a Module<'ctx>,
     context: &'ctx Context,
-    fn_value: &'a FunctionValue<'ctx>,
+    pub fn_value: Vec<FunctionValue<'ctx>>,
 
     pub variables: HashMap<String, PointerValue<'ctx>>,
-    pub current_block: BasicBlock<'ctx>,
+    pub current_block: Vec<BasicBlock<'ctx>>,
 }
 
 impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
@@ -42,9 +41,9 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
             builder,
             module,
             context,
+            fn_value: vec![*fn_value],
             variables: HashMap::new(),
-            fn_value,
-            current_block,
+            current_block: vec![current_block],
         }
     }
 
@@ -55,7 +54,12 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
 
     fn create_entry_block_alloca(&self, name: &str) -> PointerValue<'ctx> {
         let builder = self.context.create_builder();
-        let entry = self.fn_value.get_first_basic_block().unwrap();
+        let entry = self
+            .fn_value
+            .last()
+            .unwrap()
+            .get_first_basic_block()
+            .unwrap();
 
         match entry.get_first_instruction() {
             Some(first_instr) => builder.position_before(&first_instr),
@@ -115,7 +119,7 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
             }
 
             Node::CondExpr { cond, cons, alter } => {
-                let parent = *self.fn_value;
+                let parent = *self.fn_value.last().unwrap();
                 let zero_const = self.context.f64_type().const_float(0.0);
 
                 // create condition by comparing without 0.0 and returning an int
@@ -160,7 +164,8 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
 
                 phi.add_incoming(&[(&then_val, then_bb), (&else_val, else_bb)]);
 
-                self.current_block = cont_bb;
+                self.current_block.pop();
+                self.current_block.push(cont_bb);
 
                 Some(phi.as_basic_value().into_float_value())
             }
@@ -196,6 +201,9 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
                     let entry = self.context.append_basic_block(function, "entry");
                     self.builder.position_at_end(entry);
 
+                    self.fn_value.push(function);
+                    self.current_block.push(entry);
+
                     // Build variable map
                     self.variables.reserve(args.len());
                     for (i, arg) in function.get_param_iter().enumerate() {
@@ -210,6 +218,9 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
                     // Return
                     let ret = self.builder.build_return(Some(&body));
 
+                    self.fn_value.pop();
+                    self.current_block.pop();
+
                     Some(self.f64_type.const_float(0.0))
                 } else {
                     unimplemented!()
@@ -217,7 +228,6 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
             }
 
             Node::CallExpr { ident, args } => {
-                println!("Got here");
                 if let Node::IdentExpr(name) = ident.as_ref() {
                     match self.get_function(name) {
                         Some(fun) => {
@@ -255,7 +265,8 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
     }
 
     fn reposition(&mut self) {
-        self.builder.position_at_end(self.current_block);
+        self.builder
+            .position_at_end(*self.current_block.last().unwrap());
     }
 }
 
@@ -294,7 +305,7 @@ pub fn execute(string: &str) -> f64 {
 
     builder.build_return(Some(&result.unwrap()));
 
-    // module.print_to_stderr();
+    module.print_to_stderr();
 
     unsafe {
         let jit_function: JitFunction<JitFunc> = execution_engine.get_function("jit").unwrap();
@@ -332,13 +343,19 @@ mod codegen {
     }
 
     #[test]
-    fn cond_true() {
+    fn if_then_else_cond() {
         assert_eq!(
             execute("let a=1; if (1) then {a = 3;} else {a = 4;} a"),
             3.0
         )
     }
 
+    #[test]
+    fn if_then_cond() {
+        assert_eq!(execute("let a=1; if (1) then {a = 3;} a"), 3.0)
+    }
+
+    #[test]
     fn recursive() {
         assert_eq!(
             execute("fn test(a) { let b=0; if a then {b=test(a-1);} else {b=a;} b} test(10)"),
