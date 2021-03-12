@@ -72,6 +72,10 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
     pub fn build(&mut self, node: &Node) -> Option<FloatValue<'ctx>> {
         match node {
             Node::NumberExpr(nb) => Some(self.f64_type.const_float(*nb)),
+            Node::BoolExpr(b) => match b {
+                true => Some(self.f64_type.const_float(1.0)),
+                false => Some(self.f64_type.const_float(0.0)),
+            },
             Node::IdentExpr(name) => match self.variables.get(name.as_str()) {
                 Some(var) => Some(
                     self.builder
@@ -393,6 +397,16 @@ mod codegen {
     #[test]
     fn float() {
         assert_eq!(execute("1"), 1.0)
+    }
+
+    #[test]
+    fn bool_true() {
+        assert_eq!(execute("true"), 1.0)
+    }
+
+    #[test]
+    fn bool_false() {
+        assert_eq!(execute("false"), 0.0)
     }
 
     #[test]

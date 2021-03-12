@@ -29,7 +29,7 @@ if (cond) {
 # TODO
 
 - [ ] While
-- [ ] Booléen
+- [x] Booléen
 - [ ] Not, et, ou
 - [ ] Variables globales
 - [ ] Fonction/If sans/avec retour avec Blockexpr
