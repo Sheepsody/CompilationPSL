@@ -3,7 +3,7 @@
 // Call functions
 
 use super::ast::{Node, Op};
-use std::collections::HashMap;
+use std::{collections::HashMap, f64::NAN};
 
 use inkwell::basic_block::BasicBlock;
 use inkwell::builder::Builder;
@@ -21,10 +21,10 @@ struct RecursiveBuilder<'a, 'ctx> {
     builder: &'a Builder<'ctx>,
     module: &'a Module<'ctx>,
     context: &'ctx Context,
-    pub fn_value: Vec<FunctionValue<'ctx>>,
+    pub fn_stack: Vec<FunctionValue<'ctx>>,
 
     pub variables: HashMap<String, PointerValue<'ctx>>,
-    pub current_block: Vec<BasicBlock<'ctx>>,
+    pub block_stack: Vec<BasicBlock<'ctx>>,
 }
 
 impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
@@ -33,17 +33,17 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
         context: &'ctx Context,
         module: &'a Module<'ctx>,
         builder: &'a Builder<'ctx>,
-        fn_value: &'a FunctionValue<'ctx>,
-        current_block: BasicBlock<'ctx>,
+        function: &'a FunctionValue<'ctx>,
+        block_stack: BasicBlock<'ctx>,
     ) -> Self {
         Self {
             f64_type,
             builder,
             module,
             context,
-            fn_value: vec![*fn_value],
+            fn_stack: vec![*function],
             variables: HashMap::new(),
-            current_block: vec![current_block],
+            block_stack: vec![block_stack],
         }
     }
 
@@ -55,7 +55,7 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
     fn create_entry_block_alloca(&self, name: &str) -> PointerValue<'ctx> {
         let builder = self.context.create_builder();
         let entry = self
-            .fn_value
+            .fn_stack
             .last()
             .unwrap()
             .get_first_basic_block()
@@ -70,6 +70,10 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
     }
 
     pub fn build(&mut self, node: &Node) -> Option<FloatValue<'ctx>> {
+        // Resposition the "Write-Head"
+        self.reposition();
+
+        // Add the nodes
         match node {
             Node::NumberExpr(nb) => Some(self.f64_type.const_float(*nb)),
             Node::BoolExpr(b) => match b {
@@ -196,7 +200,7 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
             }
 
             Node::CondExpr { cond, cons, alter } => {
-                let parent = *self.fn_value.last().unwrap();
+                let parent = *self.fn_stack.last().unwrap();
                 let zero_const = self.context.f64_type().const_float(0.0);
 
                 // create condition by comparing without 0.0 and returning an int
@@ -217,16 +221,21 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
                     .build_conditional_branch(cond, then_bb, else_bb);
 
                 // build then block
-                self.builder.position_at_end(then_bb);
+                self.block_stack.pop();
+                self.block_stack.push(then_bb);
+                self.reposition();
+
                 let then_val = self.build(cons)?;
                 self.builder.build_unconditional_branch(cont_bb);
 
                 let then_bb = self.builder.get_insert_block().unwrap();
 
                 // build else block
-                self.builder.position_at_end(else_bb);
+                self.block_stack.pop();
+                self.block_stack.push(else_bb);
+                self.reposition();
                 // FIXME
-                let mut else_val = self.f64_type.const_float(0.0);
+                let mut else_val = self.f64_type.const_float(NAN);
                 if let Some(node) = alter {
                     else_val = self.build(node).unwrap();
                 }
@@ -235,14 +244,16 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
                 let else_bb = self.builder.get_insert_block().unwrap();
 
                 // emit merge block
-                self.builder.position_at_end(cont_bb);
+                self.block_stack.pop();
+                self.block_stack.push(cont_bb);
+                self.reposition();
 
                 let phi = self.builder.build_phi(self.context.f64_type(), "iftmp");
 
                 phi.add_incoming(&[(&then_val, then_bb), (&else_val, else_bb)]);
 
-                self.current_block.pop();
-                self.current_block.push(cont_bb);
+                self.block_stack.pop();
+                self.block_stack.push(cont_bb);
 
                 Some(phi.as_basic_value().into_float_value())
             }
@@ -276,10 +287,10 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
 
                     // Add function block
                     let entry = self.context.append_basic_block(function, "entry");
-                    self.builder.position_at_end(entry);
 
-                    self.fn_value.push(function);
-                    self.current_block.push(entry);
+                    self.fn_stack.push(function);
+                    self.block_stack.push(entry);
+                    self.reposition();
 
                     // Build variable map
                     self.variables.reserve(args.len());
@@ -295,10 +306,10 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
                     // Return
                     self.builder.build_return(Some(&body));
 
-                    self.fn_value.pop();
-                    self.current_block.pop();
+                    self.fn_stack.pop();
+                    self.block_stack.pop();
 
-                    Some(self.f64_type.const_float(0.0))
+                    Some(self.f64_type.const_float(NAN))
                 } else {
                     unimplemented!()
                 }
@@ -343,7 +354,7 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
 
     fn reposition(&mut self) {
         self.builder
-            .position_at_end(*self.current_block.last().unwrap());
+            .position_at_end(*self.block_stack.last().unwrap());
     }
 }
 
@@ -362,7 +373,7 @@ pub fn execute(string: &str) -> f64 {
     let fn_type = f64_type.fn_type(&[], false);
     let function = module.add_function("jit", fn_type, None);
 
-    let current_block = context.append_basic_block(function, "entry");
+    let block_stack = context.append_basic_block(function, "entry");
 
     let mut result: Option<FloatValue> = None;
 
@@ -372,17 +383,16 @@ pub fn execute(string: &str) -> f64 {
         &module,
         &builder,
         &function,
-        current_block,
+        block_stack,
     );
 
     for node in parse(string) {
-        recursive_builder.reposition();
         result = recursive_builder.build(&node);
     }
 
     builder.build_return(Some(&result.unwrap()));
 
-    // module.print_to_stderr();
+    //    module.print_to_stderr();
 
     unsafe {
         let jit_function: JitFunction<JitFunc> = execution_engine.get_function("jit").unwrap();

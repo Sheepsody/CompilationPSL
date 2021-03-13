@@ -32,4 +32,4 @@ if (cond) {
 - [x] Booléen
 - [ ] Not, et, ou
 - [ ] Variables globales
-- [ ] Fonction/If sans/avec retour avec Blockexpr
+- [x] Fonction/If sans/avec retour avec Blockexpr
