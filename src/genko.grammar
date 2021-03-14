@@ -12,6 +12,7 @@ FUNC = _{ "fn" }
 IF = _{ "if" }
 THEN = _{ "then" }
 ELSE = _{ "else" }
+WHILE = _{ "while" }
 
 // Types
 
@@ -23,13 +24,14 @@ bool = @{ "true" | "false" }
 
 // Operators
 
-operator = _{ add | sub | mul | div | pow | eq | le | ge | lt | gt | and | or}
+operator = _{ add | sub | mul | div | pow | eq | ne | le | ge | lt | gt | and | or }
     add      = @{ "+" }
     sub = @{ "-" }
     mul = @{ "*" }
     div   = @{ "/" }
     pow    = @{ "^" }
     eq     = @{ "==" }
+    ne     = @{ "!=" }
     le     = @{ "<=" }
     ge     = @{ ">=" }
     lt     = @{ "<" }
@@ -64,8 +66,9 @@ protoexpr = { "(" ~ (ident ~ ("," ~ ident)* )? ~ ")" }
 funcexpr = { FUNC ~ ident ~ protoexpr ~ "{" ~ line* ~ expr ~ "}" }
 
 condexpr = { IF ~ term ~ THEN ~ blockexpr ~ (ELSE ~ blockexpr)? }
+whileexpr = { WHILE ~ expr ~ blockexpr }
 
-line = _{ initexpr | (assignexpr ~ ";") | blockexpr | funcexpr | condexpr }
+line = _{ initexpr | (assignexpr ~ ";") | blockexpr | funcexpr | condexpr | whileexpr }
 
 // Programme
 

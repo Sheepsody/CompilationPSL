@@ -113,6 +113,15 @@ fn parse_pair(pair: Pair<Rule>) -> Node {
                 alter,
             }
         }
+        Rule::whileexpr => {
+            let mut pair = pair.into_inner();
+            let cond = parse_pair(pair.next().unwrap());
+            let body = parse_pair(pair.next().unwrap());
+            Node::WhileExpr {
+                cond: Box::new(cond),
+                body: Box::new(body),
+            }
+        }
         _ => unreachable!(),
     }
 }
@@ -131,6 +140,7 @@ fn reduce(lhs: Node, op: Pair<Rule>, rhs: Node) -> Node {
         Rule::ge => Op::Ge,
         Rule::and => Op::And,
         Rule::or => Op::Or,
+        Rule::ne => Op::Ne,
         _ => unreachable!(),
     };
     Node::BinaryExpr {
@@ -325,6 +335,20 @@ mod parsing {
                     ident: Box::new(Node::IdentExpr(String::from("b"))),
                     expr: Box::new(Node::NumberExpr(2.0))
                 },]))),
+            }
+        )
+    }
+
+    #[test]
+    fn cond_while() {
+        assert_eq!(
+            parse_single("while true {let a=1;} c"),
+            Node::WhileExpr {
+                cond: Box::new(Node::BoolExpr(true)),
+                body: Box::new(Node::BlockExpr(vec![Node::InitExpr {
+                    ident: Box::new(Node::IdentExpr(String::from("a"))),
+                    expr: Box::new(Node::NumberExpr(1.0))
+                },])),
             }
         )
     }

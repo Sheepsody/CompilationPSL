@@ -37,6 +37,10 @@ pub enum Node {
         cons: Box<Node>,
         alter: Option<Box<Node>>,
     },
+    WhileExpr {
+        cond: Box<Node>,
+        body: Box<Node>,
+    },
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -47,6 +51,7 @@ pub enum Op {
     Div,
     Pow,
     Eq,
+    Ne,
     Lt,
     Le,
     Gt,

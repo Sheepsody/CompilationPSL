@@ -111,6 +111,20 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
                             "tmpbool",
                         )
                     }),
+                    Op::Ne => Some({
+                        let cmp = self.builder.build_float_compare(
+                            FloatPredicate::UNE,
+                            lhs,
+                            rhs,
+                            "tmpne",
+                        );
+
+                        self.builder.build_unsigned_int_to_float(
+                            cmp,
+                            self.context.f64_type(),
+                            "tmpbool",
+                        )
+                    }),
                     Op::Lt => Some({
                         let cmp = self.builder.build_float_compare(
                             FloatPredicate::ULT,
@@ -348,6 +362,55 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
                 }
             }
 
+            Node::WhileExpr {
+                cond: condexpr,
+                body,
+            } => {
+                let parent = *self.fn_stack.last().unwrap();
+                let zero_const = self.context.f64_type().const_float(0.0);
+
+                // build branch
+                let loop_entry = self.context.append_basic_block(parent, "loop");
+                let loop_exit = self.context.append_basic_block(parent, "exitloop");
+
+                // Loop condition
+                let cond = self.build(condexpr)?;
+                let cond = self.builder.build_float_compare(
+                    FloatPredicate::ONE,
+                    cond,
+                    zero_const,
+                    "loopcond",
+                );
+
+                self.builder
+                    .build_conditional_branch(cond, loop_entry, loop_exit);
+
+                self.block_stack.pop();
+                self.block_stack.push(loop_entry);
+                self.reposition();
+
+                self.build(body);
+
+                // Reloop
+                let cond = self.build(condexpr)?;
+                let cond = self.builder.build_float_compare(
+                    FloatPredicate::ONE,
+                    cond,
+                    zero_const,
+                    "loopcond",
+                );
+
+                self.builder
+                    .build_conditional_branch(cond, loop_entry, loop_exit);
+
+                // Exit loop
+                self.block_stack.pop();
+                self.block_stack.push(loop_exit);
+                self.reposition();
+
+                Some(self.f64_type.const_float(NAN))
+            }
+
             _ => unimplemented!("{:?}", node),
         }
     }
@@ -392,7 +455,7 @@ pub fn execute(string: &str) -> f64 {
 
     builder.build_return(Some(&result.unwrap()));
 
-    //    module.print_to_stderr();
+    module.print_to_stderr();
 
     unsafe {
         let jit_function: JitFunction<JitFunc> = execution_engine.get_function("jit").unwrap();
@@ -467,6 +530,14 @@ mod codegen {
         assert_eq!(
             execute("fn test(a) { let b=0; if a then {b=test(a-1);} else {b=a;} b} test(10)"),
             0.0
+        )
+    }
+
+    #[test]
+    fn while_loop() {
+        assert_eq!(
+            execute("let a=2; let b=0; while (a!=0) {a=a-1; b=b+1;} b"),
+            2.0
         )
     }
 }
