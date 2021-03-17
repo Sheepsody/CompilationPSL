@@ -3,6 +3,10 @@
 ## Syntaxe d'un programme
 
 ```shell
+/*
+Commentaires
+*/
+
 # Variables
 let a = 3;
 let b = 3;
@@ -15,11 +19,16 @@ fn (a, b) {
 }
 
 # If-Else condition
-if (cond) {
+if cond {
     ... ;
     ... ;
 } else {
     ... ;
+    ... ;
+}
+
+# While loop
+while cond {
     ... ;
 }
 
@@ -28,8 +37,9 @@ if (cond) {
 
 # TODO
 
-- [ ] While
+- [x] While
 - [x] Booléen
 - [ ] Not, et, ou
 - [ ] Variables globales
 - [x] Fonction/If sans/avec retour avec Blockexpr
+- [ ] Statement instead of expr

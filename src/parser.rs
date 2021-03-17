@@ -176,6 +176,15 @@ mod parsing {
     fn number() {
         assert_eq!(parse_single("1"), Node::NumberExpr(1.0));
     }
+
+    #[test]
+    fn comments() {
+        assert_eq!(
+            parse_single("/* Test */ # TEST \n 1"),
+            Node::NumberExpr(1.0)
+        );
+    }
+
     #[test]
     fn binary() {
         assert_eq!(

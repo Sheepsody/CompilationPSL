@@ -2,10 +2,15 @@
 // Lexing //
 ////////////
 
-// Reserved symbols
+// Implicit symbols
 
-WHITESPACE = _{ " " | "\t" | "\n" }         // Implicit whitespace
-COMMENT = _{ "/*" ~ (!"*/" ~ ANY)* ~ "*/" } // Implicit comment
+WHITESPACE = _{ " " | "\t" | "\n" }
+COMMENT = _{
+        ("/*" ~ (!"*/" ~ ANY)* ~ "*/")
+    |   ("#" ~ (!NEWLINE ~ ANY)* ~ NEWLINE)
+}
+
+// Reserved symbols
 
 LET = _{ "let" }
 FUNC = _{ "fn" }
