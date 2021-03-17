@@ -1,0 +1,13 @@
+fn fact(a) {
+   let b = 0;
+   if a == 0
+   then {
+      b = 1;
+   }
+   else {
+      b = a * fact(a-1);
+   }
+   b
+}
+
+fact(5)
