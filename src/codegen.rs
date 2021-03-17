@@ -2,7 +2,7 @@
 // Declare new functions (no access to global variables)
 // Call functions
 
-use super::ast::{Node, Op};
+use super::ast::{BinaryOp, Node, UnaryOp};
 use std::{collections::HashMap, f64::NAN};
 
 use inkwell::basic_block::BasicBlock;
@@ -91,10 +91,15 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
             Node::UnaryExpr { op, child } => {
                 let child = self.build(child).unwrap();
                 match op {
-                    Op::Sub => Some(self.builder.build_float_sub(
+                    UnaryOp::Sub => Some(self.builder.build_float_sub(
                         self.f64_type.const_float(0.0),
                         child,
                         "tmpsub",
+                    )),
+                    UnaryOp::Not => Some(self.builder.build_float_sub(
+                        self.f64_type.const_float(1.0),
+                        child,
+                        "tmpnot",
                     )),
                     _ => unimplemented!("Unary operator {:?} not implemented...", op),
                 }
@@ -103,12 +108,12 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
                 let lhs = self.build(lhs).unwrap();
                 let rhs = self.build(rhs).unwrap();
                 match op {
-                    Op::Add => Some(self.builder.build_float_add(lhs, rhs, "tmpadd")),
-                    Op::Sub => Some(self.builder.build_float_sub(lhs, rhs, "tmpsub")),
-                    Op::Mul => Some(self.builder.build_float_mul(lhs, rhs, "tmpmul")),
-                    Op::Div => Some(self.builder.build_float_div(lhs, rhs, "tmpdiv")),
-                    Op::Pow => unimplemented!(),
-                    Op::Eq => Some({
+                    BinaryOp::Add => Some(self.builder.build_float_add(lhs, rhs, "tmpadd")),
+                    BinaryOp::Sub => Some(self.builder.build_float_sub(lhs, rhs, "tmpsub")),
+                    BinaryOp::Mul => Some(self.builder.build_float_mul(lhs, rhs, "tmpmul")),
+                    BinaryOp::Div => Some(self.builder.build_float_div(lhs, rhs, "tmpdiv")),
+                    BinaryOp::Pow => unimplemented!(),
+                    BinaryOp::Eq => Some({
                         let cmp = self.builder.build_float_compare(
                             FloatPredicate::UEQ,
                             lhs,
@@ -122,7 +127,7 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
                             "tmpbool",
                         )
                     }),
-                    Op::Ne => Some({
+                    BinaryOp::Ne => Some({
                         let cmp = self.builder.build_float_compare(
                             FloatPredicate::UNE,
                             lhs,
@@ -136,7 +141,7 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
                             "tmpbool",
                         )
                     }),
-                    Op::Lt => Some({
+                    BinaryOp::Lt => Some({
                         let cmp = self.builder.build_float_compare(
                             FloatPredicate::ULT,
                             lhs,
@@ -150,7 +155,7 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
                             "tmpbool",
                         )
                     }),
-                    Op::Gt => Some({
+                    BinaryOp::Gt => Some({
                         let cmp = self.builder.build_float_compare(
                             FloatPredicate::UGT,
                             lhs,
@@ -164,7 +169,7 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
                             "tmpbool",
                         )
                     }),
-                    Op::Ge => Some({
+                    BinaryOp::Ge => Some({
                         let cmp = self.builder.build_float_compare(
                             FloatPredicate::UGE,
                             lhs,
@@ -175,7 +180,7 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
                         self.builder
                             .build_unsigned_int_to_float(cmp, self.f64_type, "tmpbool")
                     }),
-                    Op::Le => Some({
+                    BinaryOp::Le => Some({
                         let cmp = self.builder.build_float_compare(
                             FloatPredicate::ULE,
                             lhs,
@@ -186,8 +191,7 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
                         self.builder
                             .build_unsigned_int_to_float(cmp, self.f64_type, "tmpmodbool")
                     }),
-                    Op::Modulo => {
-                        println!("Got here");
+                    BinaryOp::Modulo => {
                         let div = self.builder.build_float_div(lhs, rhs, "tmpmoddiv");
                         let cast = self.builder.build_float_to_signed_int(
                             div,
@@ -202,8 +206,8 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
                         let mul = self.builder.build_float_mul(rhs, cast, "tmpmodmul");
                         Some(self.builder.build_float_sub(lhs, mul, "tmpmod"))
                     }
-                    Op::And => unimplemented!(),
-                    Op::Or => unimplemented!(),
+                    BinaryOp::And => unimplemented!(),
+                    BinaryOp::Or => unimplemented!(),
                     _ => unimplemented!("Binary operator {:?} not implemented...", op),
                 }
             }
@@ -492,6 +496,11 @@ mod codegen {
     #[test]
     fn float() {
         assert_eq!(execute("1"), 1.0)
+    }
+
+    #[test]
+    fn not() {
+        assert_eq!(execute("!true"), 0.0)
     }
 
     #[test]

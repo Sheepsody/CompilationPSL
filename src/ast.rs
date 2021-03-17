@@ -7,11 +7,11 @@ pub enum Node {
     BoolExpr(bool),
     BlockExpr(Vec<Node>),
     UnaryExpr {
-        op: Op,
+        op: UnaryOp,
         child: Box<Node>,
     },
     BinaryExpr {
-        op: Op,
+        op: BinaryOp,
         lhs: Box<Node>,
         rhs: Box<Node>,
     },
@@ -44,7 +44,7 @@ pub enum Node {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum Op {
+pub enum BinaryOp {
     Sub,
     Add,
     Mul,
@@ -59,4 +59,10 @@ pub enum Op {
     And,
     Or,
     Modulo,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum UnaryOp {
+    Sub,
+    Not,
 }

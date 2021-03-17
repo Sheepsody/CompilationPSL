@@ -8,7 +8,7 @@
 - [x] ajouter les opérations arithmétiques + et - (associativité ?)
 - [x] ajouter les parenthèses
 - [x] ajouter les opérations \* et / (associativité, précédence ?)
-- [ ] permettre des commentaires par lignes dans le programme
+- [x] permettre des commentaires par lignes dans le programme
 - [x] permettre des commentaires par zones dans le programme
 - [x] déclarer/définir une variable scalaire
 - [x] affectation d'une expression à une variable scalaire
@@ -16,8 +16,8 @@
 - [x] entrée standard vers un scalaire
 - [x] condition if-then-else, condition vrai si entier non nul
 - [x] ajouter aussi if-then, sans clause else…
-- [ ] opérations moins unaire, modulo
-- [ ] boucle while -- algorithme d'Euclide pour le calcul du PGCD
+- [x] opérations moins unaire, modulo
+- [x] boucle while -- algorithme d'Euclide pour le calcul du PGCD
 - [ ] définition de tableaux d'entier de taille constante, fixée à la compilation
 - [ ] initialisation d'une variable scalaire avec sa déclaration
 - [x] constantes booléennes true et false
@@ -49,7 +49,7 @@
 - [ ] passage d'arguments tableaux par référence
 - [ ] ajouter un opérateur factoriel
 - [ ] typage : conversion entier booléen quand nécessaire seulement
-- [ ] ajouter la déclaration de variables booléennes dont les valeurs sont toujours limitées à 0 ou 1.
+- [x] ajouter la déclaration de variables booléennes dont les valeurs sont toujours limitées à 0 ou 1.
 - [ ] si des évaluations d'expression sont utilisées plusieurs
 - [ ] fois (modulo ? autre ?), utiliser des variables temporaires
 - [ ] faire une évaluation des expressions logiques rapide (Vrai OU x est Vrai)

@@ -20,7 +20,8 @@ lazy_static! {
         use Rule::*;
 
         PrecClimber::new(vec![
-            Operator::new(add, Left) | Operator::new(sub, Left) | Operator::new(modulo, Left),
+            // Binary
+            Operator::new(add, Left) | Operator::new(sub, Left) ,
             Operator::new(mul, Left) | Operator::new(div, Left),
             Operator::new(pow, Right),
             Operator::new(eq, Left)
@@ -30,6 +31,8 @@ lazy_static! {
                 | Operator::new(ge, Left)
                 | Operator::new(and, Left)
                 | Operator::new(or, Left),
+            // Unary
+            Operator::new(not, Left) | Operator::new(modulo, Left)
         ])
     };
 }
@@ -41,13 +44,15 @@ fn parse_pair(pair: Pair<Rule>) -> Node {
         Rule::bool => Node::BoolExpr(match pair.as_str() {
             "true" => true,
             "false" => false,
-            _ => unreachable!(),
+            _ => unreachable!("Received bad boolean type {:?}", pair.as_str()),
         }),
         Rule::unaryexpr => {
             let mut pair = pair.into_inner();
-            let operator = match pair.next().unwrap().as_rule() {
-                Rule::sub => Op::Sub,
-                _ => unimplemented!(),
+            let rule = pair.next().unwrap().as_rule();
+            let operator = match rule {
+                Rule::sub => UnaryOp::Sub,
+                Rule::not => UnaryOp::Not,
+                _ => unimplemented!("Unary operator not {:?}", rule),
             };
             Node::UnaryExpr {
                 op: operator,
@@ -128,20 +133,20 @@ fn parse_pair(pair: Pair<Rule>) -> Node {
 
 fn reduce(lhs: Node, op: Pair<Rule>, rhs: Node) -> Node {
     let operator = match op.as_rule() {
-        Rule::add => Op::Add,
-        Rule::sub => Op::Sub,
-        Rule::mul => Op::Mul,
-        Rule::div => Op::Div,
-        Rule::pow => Op::Pow,
-        Rule::eq => Op::Eq,
-        Rule::lt => Op::Lt,
-        Rule::gt => Op::Gt,
-        Rule::le => Op::Le,
-        Rule::ge => Op::Ge,
-        Rule::and => Op::And,
-        Rule::or => Op::Or,
-        Rule::ne => Op::Ne,
-        Rule::modulo => Op::Modulo,
+        Rule::add => BinaryOp::Add,
+        Rule::sub => BinaryOp::Sub,
+        Rule::mul => BinaryOp::Mul,
+        Rule::div => BinaryOp::Div,
+        Rule::pow => BinaryOp::Pow,
+        Rule::eq => BinaryOp::Eq,
+        Rule::lt => BinaryOp::Lt,
+        Rule::gt => BinaryOp::Gt,
+        Rule::le => BinaryOp::Le,
+        Rule::ge => BinaryOp::Ge,
+        Rule::and => BinaryOp::And,
+        Rule::or => BinaryOp::Or,
+        Rule::ne => BinaryOp::Ne,
+        Rule::modulo => BinaryOp::Modulo,
         _ => unimplemented!("Operator {:?} not supported as binary", op),
     };
     Node::BinaryExpr {
@@ -191,7 +196,7 @@ mod parsing {
         assert_eq!(
             parse_single("1+2"),
             Node::BinaryExpr {
-                op: Op::Add,
+                op: BinaryOp::Add,
                 lhs: Box::new(Node::NumberExpr(1.0)),
                 rhs: Box::new(Node::NumberExpr(2.0))
             }
@@ -269,7 +274,7 @@ mod parsing {
                 ident: Box::new(Node::IdentExpr(String::from("cat"))),
                 args: vec![String::from("a"), String::from("b")],
                 body: Box::new(Node::BlockExpr(vec![Node::BinaryExpr {
-                    op: Op::Add,
+                    op: BinaryOp::Add,
                     lhs: Box::new(Node::NumberExpr(6.0)),
                     rhs: Box::new(Node::NumberExpr(4.0))
                 }])),
@@ -297,7 +302,7 @@ mod parsing {
                 args: vec![
                     Node::BinaryExpr {
                         lhs: Box::new(Node::NumberExpr(1.0)),
-                        op: Op::Add,
+                        op: BinaryOp::Add,
                         rhs: Box::new(Node::NumberExpr(3.0)),
                     },
                     Node::IdentExpr(String::from("cd")),

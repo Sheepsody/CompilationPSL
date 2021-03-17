@@ -29,7 +29,8 @@ bool = @{ "true" | "false" }
 
 // Operators
 
-operator = _{ add | sub | mul | div | pow | eq | ne | le | ge | lt | gt | and | or | modulo }
+binaryop = _{ add | sub | mul | div | pow | eq | ne | le | ge | lt | gt | and | or | modulo }
+unaryop  = _{ sub | not }
     add     = @{ "+" }
     sub     = @{ "-" }
     mul     = @{ "*" }
@@ -41,6 +42,7 @@ operator = _{ add | sub | mul | div | pow | eq | ne | le | ge | lt | gt | and | 
     ge      = @{ ">=" }
     lt      = @{ "<" }
     gt      = @{ ">" }
+    not     = @{ "!" }
     and     = @{ "&&" }
     or      = @{ "||" }
     modulo  = @{ "%" }
@@ -58,8 +60,8 @@ ident = @{ ( ASCII_ALPHA | "_" )+ }
 callexpr = { ident ~ "(" ~ (expr ~ ("," ~ expr)* )? ~ ")" }
 
 assignexpr = { ident ~ "=" ~ expr }
-binaryexpr = { term ~ (operator ~ term)*}
-unaryexpr = { operator ~ term }
+binaryexpr = { term ~ (binaryop ~ term)*}
+unaryexpr = { unaryop ~ term }
 
 term = _{ num | bool | "(" ~ expr ~ ")" | callexpr | ident } // Warning! ident at the end
 expr = _{ assignexpr | binaryexpr | unaryexpr }
