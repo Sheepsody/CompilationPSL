@@ -71,12 +71,12 @@ expr = _{ assignexpr | binaryexpr | unaryexpr }
 initexpr = { LET ~ ident ~ "=" ~ expr ~ ";" }
 
 protoexpr = { "(" ~ (ident ~ ("," ~ ident)* )? ~ ")" }
-funcexpr = { FUNC ~ ident ~ protoexpr ~ "{" ~ line* ~ expr ~ "}" }
+funcexpr = { FUNC ~ ident ~ protoexpr ~ "{" ~ line* ~ expr? ~ "}" }
 
-condexpr = { IF ~ term ~ THEN ~ blockexpr ~ (ELSE ~ blockexpr)? }
+condexpr = { IF ~ (expr | term) ~ THEN ~ blockexpr ~ (ELSE ~ blockexpr)? }
 whileexpr = { WHILE ~ expr ~ blockexpr }
 
-line = _{ initexpr | (assignexpr ~ ";") | blockexpr | funcexpr | condexpr | whileexpr }
+line = _{ initexpr | blockexpr | funcexpr | condexpr | whileexpr  | (assignexpr ~ ";") | ( callexpr ~ ";" ) }
 
 // Programme
 

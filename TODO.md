@@ -23,21 +23,17 @@
 - [x] constantes booléennes true et false
 - [x] comparaisons entières < <= > >= = !=
 - [ ] algorithme du crible d'Ératosthène pour trouver les nombres premiers
-- [ ] calcul des expression booléennes (et, ou, not)
-- [ ] attention, l'opérateur NOT de la machine n'est pas logique mais binaire !
-- [ ] fonction système exit(int) qui arrête le programme en laissant la valeur sur la pile
+- [x] calcul des expression booléennes (et, ou, not)
 
 # Fonctions
 
 - [x] procédures simples : pas de retour, pas de paramètres
 - [x] fonctions avec retour et commande de retour d'une valeur (return)
 - [x] ajouter des arguments passés par valeur aux procédures et fonctions
-- [ ] avoir des variables de fonction locales
+- [x] avoir des variables de fonction locales
 - [ ] déclaration de variable globales explicites
-- [ ] fonctions récursives : (par exemple factorielle)
-- [ ] sauvegarde dans les piles des variables \textbf{locales} de la fonction\ldots
-- [ ] on pourra différencier syntaxiquement la déclaration de ces fonctions
-- [ ] vérifier si possible le nombre d'arguments lors des appels
+- [x] fonctions récursives : (par exemple factorielle)
+- [x] vérifier si possible le nombre d'arguments lors des appels
 
 ## Développements avancés
 
@@ -49,7 +45,7 @@
 - [ ] passage d'arguments tableaux par référence
 - [ ] ajouter un opérateur factoriel
 - [ ] typage : conversion entier booléen quand nécessaire seulement
-- [x] ajouter la déclaration de variables booléennes dont les valeurs sont toujours limitées à 0 ou 1.
+- [x] ajouter la déclaration de variables booléennes
 - [ ] si des évaluations d'expression sont utilisées plusieurs
 - [ ] fois (modulo ? autre ?), utiliser des variables temporaires
 - [ ] faire une évaluation des expressions logiques rapide (Vrai OU x est Vrai)

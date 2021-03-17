@@ -339,9 +339,13 @@ mod parsing {
     #[test]
     fn cond_if_else() {
         assert_eq!(
-            parse_single("if true then {let a = 1;} else {let b = 2;} c"),
+            parse_single("if a == 0 then {let a = 1;} else {let b = 2;} c"),
             Node::CondExpr {
-                cond: Box::new(Node::BoolExpr(true)),
+                cond: Box::new(Node::BinaryExpr {
+                    op: BinaryOp::Eq,
+                    lhs: Box::new(Node::IdentExpr(String::from("a"))),
+                    rhs: Box::new(Node::NumberExpr(0.0)),
+                }),
                 cons: Box::new(Node::BlockExpr(vec![Node::InitExpr {
                     ident: Box::new(Node::IdentExpr(String::from("a"))),
                     expr: Box::new(Node::NumberExpr(1.0))

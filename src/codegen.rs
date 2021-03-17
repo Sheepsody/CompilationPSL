@@ -1,7 +1,3 @@
-// TODO
-// Declare new functions (no access to global variables)
-// Call functions
-
 use super::ast::{BinaryOp, Node, UnaryOp};
 use std::{collections::HashMap, f64::NAN};
 
@@ -21,9 +17,9 @@ struct RecursiveBuilder<'a, 'ctx> {
     builder: &'a Builder<'ctx>,
     module: &'a Module<'ctx>,
     context: &'ctx Context,
-    pub fn_stack: Vec<FunctionValue<'ctx>>,
 
-    pub variables: HashMap<String, PointerValue<'ctx>>,
+    pub fn_stack: Vec<FunctionValue<'ctx>>,
+    pub var_stack: Vec<HashMap<String, PointerValue<'ctx>>>,
     pub block_stack: Vec<BasicBlock<'ctx>>,
 }
 
@@ -42,7 +38,7 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
             module,
             context,
             fn_stack: vec![*function],
-            variables: HashMap::new(),
+            var_stack: vec![HashMap::new()],
             block_stack: vec![block_stack],
         }
     }
@@ -80,7 +76,7 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
                 true => Some(self.f64_type.const_float(1.0)),
                 false => Some(self.f64_type.const_float(0.0)),
             },
-            Node::IdentExpr(name) => match self.variables.get(name.as_str()) {
+            Node::IdentExpr(name) => match self.var_stack.last().unwrap().get(name.as_str()) {
                 Some(var) => Some(
                     self.builder
                         .build_load(*var, name.as_str())
@@ -96,6 +92,7 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
                         child,
                         "tmpsub",
                     )),
+                    // Not a generalized not...
                     UnaryOp::Not => Some(self.builder.build_float_sub(
                         self.f64_type.const_float(1.0),
                         child,
@@ -218,7 +215,10 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
 
                     self.builder.build_store(alloca, expr.unwrap());
 
-                    self.variables.insert(name.to_string(), alloca);
+                    self.var_stack
+                        .last_mut()
+                        .unwrap()
+                        .insert(name.to_string(), alloca);
                     return expr;
                 } else {
                     unimplemented!()
@@ -228,7 +228,9 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
                 if let Node::IdentExpr(name) = ident.as_ref() {
                     let nval = self.build(expr).unwrap();
                     let var = self
-                        .variables
+                        .var_stack
+                        .last()
+                        .unwrap()
                         .get(name.as_str())
                         .ok_or("Undefined variable.")
                         .unwrap();
@@ -330,16 +332,21 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
 
                     self.fn_stack.push(function);
                     self.block_stack.push(entry);
+                    self.var_stack.push(HashMap::new());
                     self.reposition();
 
                     // Build variable map
-                    self.variables.reserve(args.len());
+                    self.var_stack.reserve(args.len());
                     for (i, arg) in function.get_param_iter().enumerate() {
                         let arg_name = args[i].as_str();
                         let alloca = self.create_entry_block_alloca(arg_name);
                         self.builder.build_store(alloca, arg);
-                        self.variables.insert(args[i].clone(), alloca);
+                        self.var_stack
+                            .last_mut()
+                            .unwrap()
+                            .insert(args[i].clone(), alloca);
                     }
+
                     // Compile Body
                     let body = self.build(body).unwrap();
 
@@ -348,6 +355,7 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
 
                     self.fn_stack.pop();
                     self.block_stack.pop();
+                    self.var_stack.pop();
 
                     Some(self.f64_type.const_float(NAN))
                 } else {
@@ -481,7 +489,7 @@ pub fn execute(string: &str) -> f64 {
 
     builder.build_return(Some(&result.unwrap()));
 
-    //    module.print_to_stderr();
+    // module.print_to_stderr();
 
     unsafe {
         let jit_function: JitFunction<JitFunc> = execution_engine.get_function("jit").unwrap();
@@ -500,7 +508,7 @@ mod codegen {
 
     #[test]
     fn not() {
-        assert_eq!(execute("!true"), 0.0)
+        assert_eq!(execute("!false"), 1.0)
     }
 
     #[test]
@@ -551,6 +559,17 @@ mod codegen {
     #[test]
     fn fn_args() {
         assert_eq!(execute("fn test(a) {10+a} test(5)"), 15.0)
+    }
+
+    #[test]
+    fn fn_local() {
+        assert_eq!(execute("let a=5; fn test() {let a=10;} test(); a"), 5.0)
+    }
+
+    #[test]
+    #[should_panic]
+    fn fn_invalid_params() {
+        execute("fn test(a) {} test()");
     }
 
     #[test]

@@ -19,7 +19,8 @@ fn (a, b) {
 }
 
 # If-Else condition
-if cond {
+if cond
+then {
     ... ;
     ... ;
 } else {
