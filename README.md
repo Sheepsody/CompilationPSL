@@ -33,5 +33,11 @@ while cond {
     ... ;
 }
 
+# Global variables
+global a = 3;
+fn test () {
+    a
+}
+
 5 # Retour implicite sans ;
 ```

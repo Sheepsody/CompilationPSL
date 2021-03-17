@@ -8,6 +8,7 @@ use inkwell::execution_engine::JitFunction;
 use inkwell::module::Module;
 use inkwell::types::{BasicTypeEnum, FloatType};
 use inkwell::values::{BasicValue, BasicValueEnum, FloatValue, FunctionValue, PointerValue};
+use inkwell::AddressSpace;
 use inkwell::{FloatPredicate, OptimizationLevel};
 
 type JitFunc = unsafe extern "C" fn() -> f64;
@@ -76,14 +77,21 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
                 true => Some(self.f64_type.const_float(1.0)),
                 false => Some(self.f64_type.const_float(0.0)),
             },
-            Node::IdentExpr(name) => match self.var_stack.last().unwrap().get(name.as_str()) {
-                Some(var) => Some(
-                    self.builder
-                        .build_load(*var, name.as_str())
-                        .into_float_value(),
-                ),
-                None => unreachable!("Could not find a matching variable."),
-            },
+            Node::IdentExpr(name) => {
+                if let Some(var) = self.var_stack.last().unwrap().get(name.as_str()) {
+                    return Some(
+                        self.builder
+                            .build_load(*var, name.as_str())
+                            .into_float_value(),
+                    );
+                };
+                if let Some(var) = self.module.get_global(name.as_str()) {
+                    let load = var.as_pointer_value();
+                    return Some(self.builder.build_load(load, "test").into_float_value());
+                };
+                unimplemented!("Could not find matching variable");
+            }
+
             Node::UnaryExpr { op, child } => {
                 let child = self.build(child).unwrap();
                 match op {
@@ -224,18 +232,32 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
                     unimplemented!()
                 }
             }
+            Node::GlobalInitExpr { ident, expr } => {
+                if let Node::IdentExpr(name) = ident.as_ref() {
+                    let a = self
+                        .module
+                        .add_global(self.f64_type, Some(AddressSpace::Const), name);
+                    a.set_initializer(&self.build(expr)?);
+                    None
+                } else {
+                    unimplemented!()
+                }
+            }
             Node::AssignExpr { ident, expr } => {
                 if let Node::IdentExpr(name) = ident.as_ref() {
                     let nval = self.build(expr).unwrap();
-                    let var = self
-                        .var_stack
-                        .last()
-                        .unwrap()
-                        .get(name.as_str())
-                        .ok_or("Undefined variable.")
-                        .unwrap();
-                    self.builder.build_store(*var, nval);
-                    Some(nval)
+
+                    if let Some(var) = self.var_stack.last().unwrap().get(name.as_str()) {
+                        self.builder.build_store(*var, nval);
+                        return Some(nval);
+                    }
+
+                    if let Some(var) = self.module.get_global(name.as_str()) {
+                        self.builder.build_store(var.as_pointer_value(), nval);
+                        return Some(nval);
+                    };
+
+                    unreachable!("Could not find var {:?}", name.as_str());
                 } else {
                     unimplemented!()
                 }
@@ -599,5 +621,10 @@ mod codegen {
             execute("let a=2; let b=0; while (a!=0) {a=a-1; b=b+1;} b"),
             2.0
         )
+    }
+
+    #[test]
+    fn global_var() {
+        assert_eq!(execute("global a=2; a=3; fn test() {a} test()"), 3.0)
     }
 }

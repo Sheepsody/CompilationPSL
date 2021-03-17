@@ -1,9 +1,3 @@
-// TODO
-// Print
-// Return
-// While
-// Listes
-
 use super::ast::*;
 
 use pest::iterators::*;
@@ -66,6 +60,12 @@ fn parse_pair(pair: Pair<Rule>) -> Node {
             let ident = Box::new(Node::IdentExpr(String::from(pair.next().unwrap().as_str())));
             let expr = Box::new(parse_pairs(pair));
             Node::InitExpr { ident, expr }
+        }
+        Rule::globalexpr => {
+            let mut pair = pair.into_inner();
+            let ident = Box::new(Node::IdentExpr(String::from(pair.next().unwrap().as_str())));
+            let expr = Box::new(parse_pairs(pair));
+            Node::GlobalInitExpr { ident, expr }
         }
         Rule::assignexpr => {
             let mut pair = pair.into_inner();
@@ -208,10 +208,21 @@ mod parsing {
     }
 
     #[test]
-    fn initialisation() {
+    fn init_var() {
         assert_eq!(
             parse_single("let a = 1; a"),
             Node::InitExpr {
+                ident: Box::new(Node::IdentExpr(String::from("a"))),
+                expr: Box::new(Node::NumberExpr(1.0))
+            }
+        )
+    }
+
+    #[test]
+    fn global_var() {
+        assert_eq!(
+            parse_single("global a = 1; a"),
+            Node::GlobalInitExpr {
                 ident: Box::new(Node::IdentExpr(String::from("a"))),
                 expr: Box::new(Node::NumberExpr(1.0))
             }

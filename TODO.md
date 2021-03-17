@@ -28,10 +28,10 @@
 # Fonctions
 
 - [x] procédures simples : pas de retour, pas de paramètres
-- [x] fonctions avec retour et commande de retour d'une valeur (return)
+- [x] fonctions avec retour et commande de retour d'une valeur (implicit return)
 - [x] ajouter des arguments passés par valeur aux procédures et fonctions
 - [x] avoir des variables de fonction locales
-- [ ] déclaration de variable globales explicites
+- [x] déclaration de variable globales explicites
 - [x] fonctions récursives : (par exemple factorielle)
 - [x] vérifier si possible le nombre d'arguments lors des appels
 

@@ -12,20 +12,21 @@ COMMENT = _{
 
 // Reserved symbols
 
-LET = _{ "let" }
-FUNC = _{ "fn" }
-IF = _{ "if" }
-THEN = _{ "then" }
-ELSE = _{ "else" }
-WHILE = _{ "while" }
+LET     = _{ "let" }
+FUNC    = _{ "fn" }
+IF      = _{ "if" }
+THEN    = _{ "then" }
+ELSE    = _{ "else" }
+WHILE   = _{ "while" }
+GLOBAL  = _{ "global" }
 
 // Types
 
-uint = { ASCII_DIGIT+ }
-int = { ("-" | "+")? ~ uint }
-num = @{ int ~ ("." ~ uint)? ~ ("e" ~ int)? }
+uint    = { ASCII_DIGIT+ }          // Not implemented in parser/codegen
+int     = { ("-" | "+")? ~ uint }   // Not implemented in parser/codegen
 
-bool = @{ "true" | "false" }
+num     = @{ int ~ ("." ~ uint)? ~ ("e" ~ int)? }
+bool    = @{ "true" | "false" }
 
 // Operators
 
@@ -69,6 +70,7 @@ expr = _{ assignexpr | binaryexpr | unaryexpr }
 // Autres
 
 initexpr = { LET ~ ident ~ "=" ~ expr ~ ";" }
+globalexpr = { GLOBAL ~ ident ~ "=" ~ expr ~ ";" }
 
 protoexpr = { "(" ~ (ident ~ ("," ~ ident)* )? ~ ")" }
 funcexpr = { FUNC ~ ident ~ protoexpr ~ "{" ~ line* ~ expr? ~ "}" }
@@ -76,7 +78,7 @@ funcexpr = { FUNC ~ ident ~ protoexpr ~ "{" ~ line* ~ expr? ~ "}" }
 condexpr = { IF ~ (expr | term) ~ THEN ~ blockexpr ~ (ELSE ~ blockexpr)? }
 whileexpr = { WHILE ~ expr ~ blockexpr }
 
-line = _{ initexpr | blockexpr | funcexpr | condexpr | whileexpr  | (assignexpr ~ ";") | ( callexpr ~ ";" ) }
+line = _{ initexpr | globalexpr | blockexpr | funcexpr | condexpr | whileexpr | (assignexpr ~ ";") | ( callexpr ~ ";" ) }
 
 // Programme
 

@@ -19,6 +19,10 @@ pub enum Node {
         ident: Box<Node>,
         expr: Box<Node>,
     },
+    GlobalInitExpr {
+        ident: Box<Node>,
+        expr: Box<Node>,
+    },
     AssignExpr {
         ident: Box<Node>,
         expr: Box<Node>,
