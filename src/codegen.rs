@@ -88,6 +88,17 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
                 ),
                 None => unreachable!("Could not find a matching variable."),
             },
+            Node::UnaryExpr { op, child } => {
+                let child = self.build(child).unwrap();
+                match op {
+                    Op::Sub => Some(self.builder.build_float_sub(
+                        self.f64_type.const_float(0.0),
+                        child,
+                        "tmpsub",
+                    )),
+                    _ => unimplemented!("Unary operator {:?} not implemented...", op),
+                }
+            }
             Node::BinaryExpr { op, lhs, rhs } => {
                 let lhs = self.build(lhs).unwrap();
                 let rhs = self.build(rhs).unwrap();
@@ -161,11 +172,8 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
                             "tmpge",
                         );
 
-                        self.builder.build_unsigned_int_to_float(
-                            cmp,
-                            self.context.f64_type(),
-                            "tmpbool",
-                        )
+                        self.builder
+                            .build_unsigned_int_to_float(cmp, self.f64_type, "tmpbool")
                     }),
                     Op::Le => Some({
                         let cmp = self.builder.build_float_compare(
@@ -175,14 +183,28 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
                             "tmple",
                         );
 
-                        self.builder.build_unsigned_int_to_float(
-                            cmp,
-                            self.context.f64_type(),
-                            "tmpbool",
-                        )
+                        self.builder
+                            .build_unsigned_int_to_float(cmp, self.f64_type, "tmpmodbool")
                     }),
+                    Op::Modulo => {
+                        println!("Got here");
+                        let div = self.builder.build_float_div(lhs, rhs, "tmpmoddiv");
+                        let cast = self.builder.build_float_to_signed_int(
+                            div,
+                            self.context.i64_type(),
+                            "tmpint",
+                        );
+                        let cast = self.builder.build_signed_int_to_float(
+                            cast,
+                            self.f64_type,
+                            "tmpmodtrunc",
+                        );
+                        let mul = self.builder.build_float_mul(rhs, cast, "tmpmodmul");
+                        Some(self.builder.build_float_sub(lhs, mul, "tmpmod"))
+                    }
                     Op::And => unimplemented!(),
                     Op::Or => unimplemented!(),
+                    _ => unimplemented!("Binary operator {:?} not implemented...", op),
                 }
             }
             Node::InitExpr { ident, expr } => {
@@ -455,7 +477,7 @@ pub fn execute(string: &str) -> f64 {
 
     builder.build_return(Some(&result.unwrap()));
 
-    module.print_to_stderr();
+    //    module.print_to_stderr();
 
     unsafe {
         let jit_function: JitFunction<JitFunc> = execution_engine.get_function("jit").unwrap();
@@ -485,6 +507,16 @@ mod codegen {
     #[test]
     fn add() {
         assert_eq!(execute("1+2"), 3.0)
+    }
+
+    #[test]
+    fn unary_sub() {
+        assert_eq!(execute("let a=1; -a"), -1.0)
+    }
+
+    #[test]
+    fn modulo() {
+        assert_eq!(execute("10 % 3"), 1.0)
     }
 
     #[test]

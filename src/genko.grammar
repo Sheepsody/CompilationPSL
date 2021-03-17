@@ -29,24 +29,25 @@ bool = @{ "true" | "false" }
 
 // Operators
 
-operator = _{ add | sub | mul | div | pow | eq | ne | le | ge | lt | gt | and | or }
-    add      = @{ "+" }
-    sub = @{ "-" }
-    mul = @{ "*" }
-    div   = @{ "/" }
-    pow    = @{ "^" }
-    eq     = @{ "==" }
-    ne     = @{ "!=" }
-    le     = @{ "<=" }
-    ge     = @{ ">=" }
-    lt     = @{ "<" }
-    gt     = @{ ">" }
+operator = _{ add | sub | mul | div | pow | eq | ne | le | ge | lt | gt | and | or | modulo }
+    add     = @{ "+" }
+    sub     = @{ "-" }
+    mul     = @{ "*" }
+    div     = @{ "/" }
+    pow     = @{ "^" }
+    eq      = @{ "==" }
+    ne      = @{ "!=" }
+    le      = @{ "<=" }
+    ge      = @{ ">=" }
+    lt      = @{ "<" }
+    gt      = @{ ">" }
     and     = @{ "&&" }
-    or     = @{ "||" }
+    or      = @{ "||" }
+    modulo  = @{ "%" }
 
 // Identifiers (all alpha strings not above)
 
-ident = @{ ASCII_ALPHA+ }
+ident = @{ ( ASCII_ALPHA | "_" )+ }
 
 /////////////
 // Parsing //

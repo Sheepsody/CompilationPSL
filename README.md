@@ -34,12 +34,3 @@ while cond {
 
 5 # Retour implicite sans ;
 ```
-
-# TODO
-
-- [x] While
-- [x] Booléen
-- [ ] Not, et, ou
-- [ ] Variables globales
-- [x] Fonction/If sans/avec retour avec Blockexpr
-- [ ] Statement instead of expr

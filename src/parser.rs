@@ -20,7 +20,7 @@ lazy_static! {
         use Rule::*;
 
         PrecClimber::new(vec![
-            Operator::new(add, Left) | Operator::new(sub, Left),
+            Operator::new(add, Left) | Operator::new(sub, Left) | Operator::new(modulo, Left),
             Operator::new(mul, Left) | Operator::new(div, Left),
             Operator::new(pow, Right),
             Operator::new(eq, Left)
@@ -141,7 +141,8 @@ fn reduce(lhs: Node, op: Pair<Rule>, rhs: Node) -> Node {
         Rule::and => Op::And,
         Rule::or => Op::Or,
         Rule::ne => Op::Ne,
-        _ => unreachable!(),
+        Rule::modulo => Op::Modulo,
+        _ => unimplemented!("Operator {:?} not supported as binary", op),
     };
     Node::BinaryExpr {
         op: operator,

@@ -2,26 +2,26 @@
 
 ## Langage de base
 
-- [ ] définir une expression comme une contante entière
-- [ ] afficher une expression
-- [ ] un programme est une liste d'instructions
-- [ ] ajouter les opérations arithmétiques + et - (associativité ?)
-- [ ] ajouter les parenthèses
-- [ ] ajouter les opérations \* et / (associativité, précédence ?)
+- [x] définir une expression comme une contante entière
+- [x] afficher une expression
+- [x] un programme est une liste d'instructions
+- [x] ajouter les opérations arithmétiques + et - (associativité ?)
+- [x] ajouter les parenthèses
+- [x] ajouter les opérations \* et / (associativité, précédence ?)
 - [ ] permettre des commentaires par lignes dans le programme
-- [ ] permettre des commentaires par zones dans le programme
-- [ ] déclarer/définir une variable scalaire
-- [ ] affectation d'une expression à une variable scalaire
-- [ ] utilisation d'une variable dans une expression
-- [ ] entrée standard vers un scalaire
-- [ ] condition if-then-else, condition vrai si entier non nul
-- [ ] ajouter aussi if-then, sans clause else…
+- [x] permettre des commentaires par zones dans le programme
+- [x] déclarer/définir une variable scalaire
+- [x] affectation d'une expression à une variable scalaire
+- [x] utilisation d'une variable dans une expression
+- [x] entrée standard vers un scalaire
+- [x] condition if-then-else, condition vrai si entier non nul
+- [x] ajouter aussi if-then, sans clause else…
 - [ ] opérations moins unaire, modulo
 - [ ] boucle while -- algorithme d'Euclide pour le calcul du PGCD
 - [ ] définition de tableaux d'entier de taille constante, fixée à la compilation
 - [ ] initialisation d'une variable scalaire avec sa déclaration
-- [ ] constantes booléennes true et false
-- [ ] comparaisons entières < <= > >= = !=
+- [x] constantes booléennes true et false
+- [x] comparaisons entières < <= > >= = !=
 - [ ] algorithme du crible d'Ératosthène pour trouver les nombres premiers
 - [ ] calcul des expression booléennes (et, ou, not)
 - [ ] attention, l'opérateur NOT de la machine n'est pas logique mais binaire !
@@ -29,10 +29,9 @@
 
 # Fonctions
 
-- [ ] procédures simples : pas de retour, pas de paramètres
-- [ ] fonctions avec retour et commande de retour d'une valeur (return)
-- [ ] on pourra différencier syntaxiquement les fonctions des procédures
-- [ ] ajouter des arguments passés par valeur aux procédures et fonctions
+- [x] procédures simples : pas de retour, pas de paramètres
+- [x] fonctions avec retour et commande de retour d'une valeur (return)
+- [x] ajouter des arguments passés par valeur aux procédures et fonctions
 - [ ] avoir des variables de fonction locales
 - [ ] déclaration de variable globales explicites
 - [ ] fonctions récursives : (par exemple factorielle)

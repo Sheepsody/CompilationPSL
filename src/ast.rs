@@ -58,4 +58,5 @@ pub enum Op {
     Ge,
     And,
     Or,
+    Modulo,
 }
