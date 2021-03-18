@@ -7,7 +7,7 @@ fn fact(a) {
    else {
       b = a * fact(a-1);
    }
-   b
+   return b;
 }
 
 fact(5)
