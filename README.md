@@ -1,6 +1,8 @@
 # 言語
 
-GenGo (言語), est un langage de programmation implémenté dans le cadre du cours _informatique fondamentale & compilation_ des Mines.
+GenGo (言語), is an experimental programming langage I made for the course _informatique fondamentale & compilation_ at Mines ParisTech.
+
+## How to use ?
 
 ```shell
 # Compile & run a program
@@ -12,7 +14,7 @@ cargo run -- comp \
 cargo run -- jit
 ```
 
-## Syntaxe d'un programme
+## Syntax
 
 ```shell
 /*
@@ -48,20 +50,16 @@ while cond {
 # Global variables
 global a = 3;
 fn test () {
-    a
+    a = 1;
+    return a; # Returns 1
 }
 
 5 # Retour implicite sans ;
 ```
 
-## Tests
+## Running the tests
 
-```rust
+```shell
 # Run the tests
 cargo test -- --test-threads=1 --nocapture
 ```
-
-## Improvements
-
-- [ ] Draw a clear distinction between expressions (binaryop, unaryop, etc.) & items (assignement, loops, etc.)
-- [ ] Add structs & arrays

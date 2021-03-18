@@ -53,3 +53,7 @@
 - [ ] ajouter une allocation dynamique de tableaux dans la zone de données
 - [ ] implémenter une évaluation partielle des expressions entières
 - [ ] vérifier que les accès de tableaux sont dans les bornes déclarées
+
+## Other
+
+- [ ] Draw a clear distinction between expressions (binaryop, unaryop, etc.) & items (assignement, loops, etc.)
