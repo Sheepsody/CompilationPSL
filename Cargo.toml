@@ -1,5 +1,5 @@
 [package]
-name = "rust"
+name = "gengoc"
 version = "0.1.0"
 authors = ["Victor Vialard <victor.vialard@mines-paristech.fr>"]
 edition = "2018"
@@ -11,3 +11,4 @@ pest = "2.1.3"
 pest_derive = "2.1.0"
 lazy_static = "1.4.0"
 inkwell = { git = "https://github.com/TheDan64/inkwell", branch = "master", features = ["llvm8-0"] }
+clap = "3.0.0-beta.2"

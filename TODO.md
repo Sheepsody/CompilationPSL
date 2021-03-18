@@ -25,9 +25,6 @@
 - [ ] algorithme du crible d'Ératosthène pour trouver les nombres premiers
 - [x] calcul des expression booléennes (et, ou, not)
 
-Syntaxe
-let a = vec[]
-
 # Fonctions
 
 - [x] procédures simples : pas de retour, pas de paramètres
@@ -54,6 +51,5 @@ let a = vec[]
 - [ ] faire une évaluation des expressions logiques rapide (Vrai OU x est Vrai)
 - [ ] initialisation d'un tableau avec sa déclaration
 - [ ] ajouter une allocation dynamique de tableaux dans la zone de données
-- [ ] (on ne s'occupera pas de libérer la mémoire…)
 - [ ] implémenter une évaluation partielle des expressions entières
 - [ ] vérifier que les accès de tableaux sont dans les bornes déclarées

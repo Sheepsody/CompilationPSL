@@ -85,6 +85,6 @@ line = _{ initexpr | globalexpr | blockexpr | funcexpr | condexpr | whileexpr | 
 
 // Programme
 
-program = _{ SOI ~ line* ~ expr ~ EOI }
+program = _{ SOI ~ line* ~ expr? ~ EOI }
 
 blockexpr = { "{" ~ line* ~ "}" }

@@ -1,4 +1,5 @@
 use super::ast::{BinaryOp, Node, UnaryOp};
+use super::parser::parse;
 use std::collections::HashMap;
 use std::f64::NAN;
 
@@ -12,7 +13,7 @@ use inkwell::values::{BasicValue, BasicValueEnum, FloatValue, FunctionValue, Poi
 use inkwell::AddressSpace;
 use inkwell::{FloatPredicate, OptimizationLevel};
 
-type JitFunc = unsafe extern "C" fn() -> f64;
+pub type JitFunc = unsafe extern "C" fn() -> f64;
 
 struct RecursiveBuilder<'a, 'ctx> {
     f64_type: FloatType<'ctx>,
@@ -107,7 +108,6 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
                         child,
                         "tmpnot",
                     )),
-                    _ => unimplemented!("Unary operator {:?} not implemented...", op),
                 }
             }
             Node::BinaryExpr { op, lhs, rhs } => {
@@ -214,7 +214,6 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
                     }
                     BinaryOp::And => unimplemented!(),
                     BinaryOp::Or => unimplemented!(),
-                    _ => unimplemented!("Binary operator {:?} not implemented...", op),
                 }
             }
             Node::InitExpr { ident, expr } => {
@@ -228,7 +227,7 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
                         .last_mut()
                         .unwrap()
                         .insert(name.to_string(), alloca);
-                    return expr;
+                    None
                 } else {
                     unimplemented!()
                 }
@@ -290,7 +289,10 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
                 self.block_stack.push(then_bb);
                 self.reposition();
 
-                let then_val = self.build(cons)?;
+                let mut then_val = self.f64_type.const_float(NAN);
+                if let Some(r) = self.build(cons) {
+                    then_val = r;
+                }
                 self.builder.build_unconditional_branch(cont_bb);
 
                 let then_bb = self.builder.get_insert_block().unwrap();
@@ -302,7 +304,9 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
                 // FIXME
                 let mut else_val = self.f64_type.const_float(NAN);
                 if let Some(node) = alter {
-                    else_val = self.build(node).unwrap();
+                    if let Some(r) = self.build(node) {
+                        else_val = r;
+                    }
                 }
                 self.builder.build_unconditional_branch(cont_bb);
 
@@ -371,7 +375,7 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
                     }
 
                     // Compile Body
-                    let body = self.build(body);
+                    self.build(body);
 
                     // FIXME : All functions must return...
                     self.builder.build_return(None);
@@ -379,6 +383,8 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
                     self.fn_stack.pop();
                     self.block_stack.pop();
                     self.var_stack.pop();
+
+                    self.reposition();
 
                     None
                 } else {
@@ -477,7 +483,6 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
 
                 None
             }
-
             _ => unimplemented!("{:?}", node),
         }
     }
@@ -488,17 +493,10 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
     }
 }
 
-pub fn execute(string: &str) -> f64 {
-    use super::parser::parse;
-
-    let context = Context::create();
+pub fn create_jit_module<'a>(context: &'a Context, string: &str) -> Module<'a> {
     let module = context.create_module("GenKo");
+
     let builder = context.create_builder();
-
-    let execution_engine = module
-        .create_jit_execution_engine(OptimizationLevel::None)
-        .unwrap();
-
     let f64_type = context.f64_type();
     let fn_type = f64_type.fn_type(&[], false);
     let function = module.add_function("jit", fn_type, None);
@@ -520,8 +518,25 @@ pub fn execute(string: &str) -> f64 {
         result = recursive_builder.build(&node);
     }
 
-    builder.build_return(Some(&result.unwrap()));
+    match result {
+        Some(r) => builder.build_return(Some(&r)),
+        _ => builder.build_return(Some(&context.f64_type().const_float(NAN))),
+    };
 
+    module
+}
+
+pub fn execute(string: &str) -> f64 {
+    let context = Context::create();
+
+    let module = create_jit_module(&context, string);
+
+    // The program is wrapped into a function to use JIT (Just In Time) compilation
+    let execution_engine = module
+        .create_jit_execution_engine(OptimizationLevel::None)
+        .unwrap();
+
+    // Uncomment to print LLVMIR Code
     // module.print_to_stderr();
 
     unsafe {
@@ -616,6 +631,11 @@ mod codegen {
             execute("let a=1; if (0 == 1) then {a = 3;} else {a=2;} a"),
             2.0
         )
+    }
+
+    #[test]
+    fn if_then_else_cond_empty() {
+        assert_eq!(execute("let a=1; if (0 == 1) then {} else {} a"), 1.0)
     }
 
     #[test]
