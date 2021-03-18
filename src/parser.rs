@@ -88,11 +88,7 @@ fn parse_pair(pair: Pair<Rule>) -> Node {
                 .into_iter()
                 .map(|p| String::from(p.as_str()))
                 .collect();
-            let mut body = Vec::new();
-            for p in pair {
-                body.push(parse_pair(p));
-            }
-            let body = Box::new(Node::BlockExpr(body));
+            let body = Box::new(parse_pair(pair.next().unwrap()));
             Node::FuncExpr { ident, args, body }
         }
         Rule::callexpr => {
@@ -126,6 +122,10 @@ fn parse_pair(pair: Pair<Rule>) -> Node {
                 cond: Box::new(cond),
                 body: Box::new(body),
             }
+        }
+        Rule::returnexpr => {
+            let ret = Box::new(parse_pair(pair.into_inner().next().unwrap()));
+            Node::ReturnExpr { ret }
         }
         _ => unreachable!(),
     }
@@ -268,11 +268,11 @@ mod parsing {
     #[test]
     fn func_declaration_empty() {
         assert_eq!(
-            parse_single("fn cat() { 1 } 1"),
+            parse_single("fn cat() {} 1"),
             Node::FuncExpr {
                 ident: Box::new(Node::IdentExpr(String::from("cat"))),
                 args: vec![],
-                body: Box::new(Node::BlockExpr(vec![Node::NumberExpr(1.0)],))
+                body: Box::new(Node::BlockExpr(vec![]))
             }
         )
     }
@@ -280,14 +280,16 @@ mod parsing {
     #[test]
     fn func_declaration() {
         assert_eq!(
-            parse_single("fn cat(a, b) { 6+4 } 6"),
+            parse_single("fn cat(a, b) { return 6+4; } 6"),
             Node::FuncExpr {
                 ident: Box::new(Node::IdentExpr(String::from("cat"))),
                 args: vec![String::from("a"), String::from("b")],
-                body: Box::new(Node::BlockExpr(vec![Node::BinaryExpr {
-                    op: BinaryOp::Add,
-                    lhs: Box::new(Node::NumberExpr(6.0)),
-                    rhs: Box::new(Node::NumberExpr(4.0))
+                body: Box::new(Node::BlockExpr(vec![Node::ReturnExpr {
+                    ret: Box::new(Node::BinaryExpr {
+                        op: BinaryOp::Add,
+                        lhs: Box::new(Node::NumberExpr(6.0)),
+                        rhs: Box::new(Node::NumberExpr(4.0))
+                    })
                 }])),
             }
         )

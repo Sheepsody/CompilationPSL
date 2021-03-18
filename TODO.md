@@ -25,10 +25,13 @@
 - [ ] algorithme du crible d'Ératosthène pour trouver les nombres premiers
 - [x] calcul des expression booléennes (et, ou, not)
 
+Syntaxe
+let a = vec[]
+
 # Fonctions
 
 - [x] procédures simples : pas de retour, pas de paramètres
-- [x] fonctions avec retour et commande de retour d'une valeur (implicit return)
+- [x] fonctions avec retour et commande de retour d'une valeur (return)
 - [x] ajouter des arguments passés par valeur aux procédures et fonctions
 - [x] avoir des variables de fonction locales
 - [x] déclaration de variable globales explicites

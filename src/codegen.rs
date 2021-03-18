@@ -1,5 +1,6 @@
 use super::ast::{BinaryOp, Node, UnaryOp};
-use std::{collections::HashMap, f64::NAN};
+use std::collections::HashMap;
+use std::f64::NAN;
 
 use inkwell::basic_block::BasicBlock;
 use inkwell::builder::Builder;
@@ -370,19 +371,25 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
                     }
 
                     // Compile Body
-                    let body = self.build(body).unwrap();
+                    let body = self.build(body);
 
-                    // Return
-                    self.builder.build_return(Some(&body));
+                    // FIXME : All functions must return...
+                    self.builder.build_return(None);
 
                     self.fn_stack.pop();
                     self.block_stack.pop();
                     self.var_stack.pop();
 
-                    Some(self.f64_type.const_float(NAN))
+                    None
                 } else {
                     unimplemented!()
                 }
+            }
+
+            Node::ReturnExpr { ret } => {
+                let ret = self.build(ret)?;
+                self.builder.build_return(Some(&ret));
+                None
             }
 
             Node::CallExpr { ident, args } => {
@@ -400,6 +407,10 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
                                 .by_ref()
                                 .map(|&val| val.into())
                                 .collect();
+
+                            if fun.count_params() != (argsv.len() as u32) {
+                                panic!("PLop");
+                            }
 
                             match self
                                 .builder
@@ -464,7 +475,7 @@ impl<'a, 'ctx> RecursiveBuilder<'a, 'ctx> {
                 self.block_stack.push(loop_exit);
                 self.reposition();
 
-                Some(self.f64_type.const_float(NAN))
+                None
             }
 
             _ => unimplemented!("{:?}", node),
@@ -575,12 +586,12 @@ mod codegen {
 
     #[test]
     fn fn_decl() {
-        assert_eq!(execute("fn test() {1} 10"), 10.0)
+        assert_eq!(execute("fn test() {return 1;} 10"), 10.0)
     }
 
     #[test]
     fn fn_args() {
-        assert_eq!(execute("fn test(a) {10+a} test(5)"), 15.0)
+        assert_eq!(execute("fn test(a) {return 10+a;} test(5)"), 15.0)
     }
 
     #[test]
@@ -610,7 +621,9 @@ mod codegen {
     #[test]
     fn recursive() {
         assert_eq!(
-            execute("fn test(a) { let b=0; if a then {b=test(a-1);} else {b=a;} b} test(10)"),
+            execute(
+                "fn test(a) { let b=0; if a then {b=test(a-1);} else {b=a;} return b;} test(10)"
+            ),
             0.0
         )
     }
@@ -625,6 +638,9 @@ mod codegen {
 
     #[test]
     fn global_var() {
-        assert_eq!(execute("global a=2; a=3; fn test() {a} test()"), 3.0)
+        assert_eq!(
+            execute("global a=2; a=3; fn test() {return a;} test()"),
+            3.0
+        )
     }
 }

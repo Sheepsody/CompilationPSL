@@ -45,6 +45,9 @@ pub enum Node {
         cond: Box<Node>,
         body: Box<Node>,
     },
+    ReturnExpr {
+        ret: Box<Node>,
+    },
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
